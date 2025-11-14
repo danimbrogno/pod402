@@ -1,0 +1,30 @@
+{
+  "name": "main",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/main/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/main",
+        "configFile": "apps/main/vite.config.ts"
+      }
+    },
+    "serve": {
+      "executor": "@nx/vite:serve",
+      "options": {
+        "configFile": "apps/main/vite.config.ts"
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "passWithNoTests": true,
+        "vitestConfigFile": "apps/main/vite.config.ts"
+      }
+    }
+  }
+}

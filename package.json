@@ -1,0 +1,33 @@
+{
+  "name": "web3-starter",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "nx": "nx",
+    "build": "nx run-many --target=build --all",
+    "serve": "nx serve main",
+    "test": "nx run-many --target=test --all",
+    "format": "nx format:write"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@nx/js": "19.4.1",
+    "@nx/node": "19.4.1",
+    "@nx/react": "19.4.1",
+    "@nx/vite": "19.4.1",
+    "@nx/workspace": "19.4.1",
+    "@types/node": "^20.14.10",
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "nx": "19.4.1",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.5",
+    "vite": "^5.1.0",
+    "vitest": "^2.0.5"
+  }
+}

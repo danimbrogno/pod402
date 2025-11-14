@@ -1,0 +1,26 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": false,
+    "experimentalDecorators": false,
+    "importHelpers": true,
+    "target": "es2019",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@project/common": ["library/common/src/index.ts"],
+      "@project/contracts": ["library/contracts/src/index.ts"],
+      "@project/drizzle": ["library/drizzle/src/index.ts"],
+      "@project/ponder-config": ["library/ponder-config/src/index.ts"],
+      "@project/trpc": ["library/trpc/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

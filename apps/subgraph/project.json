@@ -1,0 +1,27 @@
+{
+  "name": "subgraph",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/subgraph/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/subgraph",
+        "main": "apps/subgraph/src/main.ts",
+        "tsConfig": "apps/subgraph/tsconfig.app.json",
+        "assets": []
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "node dist/apps/subgraph/main.js",
+        "cwd": "."
+      }
+    }
+  }
+}

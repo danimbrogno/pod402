@@ -1,0 +1,47 @@
+{
+  "name": "Node.js & TypeScript",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": "true",
+      "upgradePackages": "true"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20.13.1"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest",
+      "ppa": "false"
+    },
+    "ghcr.io/joedmck/devcontainer-features/cloudflared:1.0.2": {}
+  },
+  "containerEnv": {},
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "solidity.monoRepoSupport": true,
+        "solidity.compileUsingLocalVersion": "0.8.23",
+        "editor.formatOnSave": true,
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "js/ts.implicitProjectConfig.experimentalDecorators": true,
+        "solidity.compileUsingRemoteVersion": "v0.8.23+commit.f704f362",
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "nrwl.angular-console",
+        "firsttris.vscode-jest-runner",
+        "ms-azuretools.vscode-docker",
+        "mutantdino.resourcemonitor",
+        "JuanBlanco.solidity",
+        "GitHub.vscode-github-actions"
+      ]
+    }
+  },
+  "remoteUser": "node"
+}

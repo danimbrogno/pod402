@@ -1,0 +1,18 @@
+{
+  "name": "trpc",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "library/trpc/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "options": {
+        "outputPath": "dist/library/trpc",
+        "tsConfig": "library/trpc/tsconfig.lib.json",
+        "main": "library/trpc/src/index.ts",
+        "assets": []
+      }
+    }
+  }
+}

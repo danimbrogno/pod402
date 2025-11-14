@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "useDaemonProcess": true,
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+      "!{projectRoot}/test-setup.[jt]s",
+      "!{projectRoot}/**/*.spec.[jt]s?(x)"
+    ],
+    "sharedGlobals": []
+  },
+  "plugins": [
+    {
+      "plugin": "@nx/vite/plugin"
+    }
+  ],
+  "targetDefaults": {
+    "@nx/vite:build": {
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
+    },
+    "@nx/js:tsc": {
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
+    }
+  }
+}

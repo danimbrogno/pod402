@@ -1,0 +1,26 @@
+{
+  "solidity.monoRepoSupport": true,
+  "solidity.compileUsingLocalVersion": "0.8.23",
+  "solidity.formatter": "forge",
+  "solidity.enabledAsYouTypeCompilationErrorCheck": true,
+  "editor.formatOnSave": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "js/ts.implicitProjectConfig.experimentalDecorators": true,
+  "solidity.compileUsingRemoteVersion": "v0.8.23+commit.f704f362",
+  "files.watcherExclude": {
+    "node_modules/**": true,
+    "dist/**": true
+  },
+  "typescript.tsserver.maxTsServerMemory": 4096,
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  },
+  "nxConsole.generateAiAgentRules": true,
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[solidity]": {
+    "editor.defaultFormatter": "JuanBlanco.solidity"
+  }
+}
