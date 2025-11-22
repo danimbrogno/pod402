@@ -11,9 +11,18 @@ RUN curl -L https://foundry.paradigm.xyz | bash \
   && foundryup \
   && cp -r /root/.foundry /usr/local/share/foundry
 
+# Install ffmpeg, ffprobe, and git-lfs
+RUN apt-get update && apt-get install -y ffmpeg git-lfs && rm -rf /var/lib/apt/lists/*
+
+# Initialize git-lfs
+RUN git lfs install
+
+# Install cloudflared
+RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared \
+  && chmod +x /usr/local/bin/cloudflared
+
 RUN npm install -g nx@latest @frames.js/debugger@0.5.0 npm@latest @svgr/cli@latest
 
-COPY fonts/googlefonts /usr/share/fonts/
 RUN fc-cache -fv
 
 USER node

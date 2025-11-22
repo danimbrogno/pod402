@@ -12,7 +12,8 @@
     "serve": "turbo run serve --filter=main",
     "test": "turbo run test",
     "dev": "turbo run serve --filter=main",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "tunnel": "cloudflared tunnel --config .cloudflared/config.yml run"
   },
   "dependencies": {
     "react": "^18.3.1",
