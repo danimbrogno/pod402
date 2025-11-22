@@ -26,11 +26,36 @@ export const buildEpisode = async (config: StreamConfig, prompt: string) => {
     audioEngine.context.close();
   });
 
-  transcoder.on('error', (error) => {
-    console.error('[buildEpisode] Transcoder error:', error);
+  transcoder.on('error', (error: Error) => {
+    // "Output stream closed" is expected when client disconnects
+    const isExpectedDisconnect =
+      error.message === 'Output stream closed' ||
+      error.message.includes('stream closed') ||
+      error.message.includes('EPIPE') ||
+      error.message.includes('ECONNRESET');
+
+    if (isExpectedDisconnect) {
+      console.log(
+        '[buildEpisode] Client disconnected, transcoder stream closed (expected)'
+      );
+    } else {
+      console.error('[buildEpisode] Transcoder error:', error);
+    }
   });
 
-  await getAmbientAudio(
+  // Start narration immediately (non-blocking) while ambient audio loads
+  // This allows text generation to begin right away
+  console.log('[buildEpisode] Starting narration generation immediately...');
+  const narrationCleanupPromise = getNarration(
+    config,
+    audioEngine.context,
+    audioEngine.destination,
+    prompt || 'Give me a meditation about gratitude'
+  );
+
+  // Load ambient audio (this can happen in parallel with narration starting)
+  console.log('[buildEpisode] Loading ambient audio...');
+  const ambientSource = await getAmbientAudio(
     config,
     audioEngine.context,
     audioEngine.destination,
@@ -38,12 +63,8 @@ export const buildEpisode = async (config: StreamConfig, prompt: string) => {
   );
   console.log('[buildEpisode] Ambient audio started');
 
-  const narrationCleanup = await getNarration(
-    config,
-    audioEngine.context,
-    audioEngine.destination,
-    prompt || 'Give me a meditation about gratitude'
-  );
+  // Get the cleanup function from narration (it returns immediately)
+  const narrationCleanup = await narrationCleanupPromise;
   console.log('[buildEpisode] Narration generation started');
 
   // Cleanup function to terminate all resources

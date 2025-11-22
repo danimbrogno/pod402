@@ -1,6 +1,6 @@
 import { StreamConfig } from './interface';
 
-export function getEpisodeConfig({
+export function getStreamConfig({
   ffmpegPath,
   ffprobePath,
 }: {
@@ -40,8 +40,13 @@ export function getEpisodeConfig({
       maxLength: 60 * 60,
     },
     openai: {
-      instructions:
+      speechInstruction:
         'Speak like a meditation  coach. Calm, soothing, slow and deliberate',
+      textInstruction: `You are a world renowned meditation coach at the start of a session with a client.
+      You are going to guide them through a meditation that will last about 400 words.
+      You should jump straight into the meditation without any introduction.
+      At the end let your client know that the meditation is over and that they can open their eyes.
+      `,
     },
     errorMessage:
       "Sorry, I'm having trouble generating a meditation right now. Please try again later.",

@@ -48,7 +48,8 @@ export type StreamConfig = {
     maxLength: number;
   };
   openai: {
-    instructions: string;
+    speechInstruction: string;
+    textInstruction: string;
   };
   errorMessage: string;
 };

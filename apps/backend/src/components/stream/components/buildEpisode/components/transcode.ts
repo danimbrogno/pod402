@@ -32,7 +32,20 @@ export const transcode = (
     .on('progress', function (progress) {
       console.log({ progress }, `Render progress`);
     })
-    .on('error', (err) => {
-      console.error(err);
+    .on('error', (err: Error) => {
+      // "Output stream closed" is expected when client disconnects
+      const isExpectedDisconnect =
+        err.message === 'Output stream closed' ||
+        err.message.includes('stream closed') ||
+        err.message.includes('EPIPE') ||
+        err.message.includes('ECONNRESET');
+
+      if (isExpectedDisconnect) {
+        console.log(
+          '[transcode] Client disconnected, output stream closed (expected)'
+        );
+      } else {
+        console.error('[transcode] Transcoder error:', err);
+      }
     });
 };

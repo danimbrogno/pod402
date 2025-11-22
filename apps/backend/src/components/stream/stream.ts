@@ -3,7 +3,7 @@ import { createReadStream, statSync, existsSync, ReadStream } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { buildEpisode } from './components/buildEpisode/buildEpisode';
-import { getEpisodeConfig } from './components/getEpisodeConfig';
+import { getStreamConfig } from './components/getStreamConfig';
 
 // Get the directory path for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -24,7 +24,7 @@ export const streamHandler: RequestHandler = async (request, response) => {
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   console.log(`[streamHandler] Request ${requestId} started`);
 
-  const config = getEpisodeConfig({
+  const config = getStreamConfig({
     ffmpegPath: process.env.FFMPEG_PATH,
     ffprobePath: process.env.FFPROBE_PATH,
   });
@@ -55,11 +55,28 @@ export const streamHandler: RequestHandler = async (request, response) => {
     response.set('Keep-Alive', 'timeout=620, max=0');
     response.set('Accept-Ranges', 'none');
 
-    episode.transcoder.pipe(response, { end: true }).on('close', () => {
-      console.log(
-        `[streamHandler] Request ${requestId} - Transcoder pipe closed`
-      );
-    });
+    episode.transcoder
+      .pipe(response, { end: true })
+      .on('close', () => {
+        console.log(
+          `[streamHandler] Request ${requestId} - Transcoder pipe closed`
+        );
+      })
+      .on('error', (error: Error) => {
+        // Handle pipe errors gracefully
+        const isExpectedDisconnect =
+          error.message === 'Output stream closed' ||
+          error.message.includes('stream closed') ||
+          error.message.includes('EPIPE') ||
+          error.message.includes('ECONNRESET');
+
+        if (!isExpectedDisconnect) {
+          console.error(
+            `[streamHandler] Request ${requestId} - Pipe error:`,
+            error
+          );
+        }
+      });
 
     // Handle client disconnect/abort
     request.on('close', () => {
@@ -84,6 +101,14 @@ export const streamHandler: RequestHandler = async (request, response) => {
       console.log(
         `[streamHandler] Request ${requestId} - Response stream closed`
       );
+      // Unpipe the transcoder from the response to prevent further writes
+      if (episodeResources?.transcoder) {
+        try {
+          episodeResources.transcoder.unpipe(response);
+        } catch (error) {
+          // Ignore errors when unpiping already closed stream
+        }
+      }
       if (episodeResources?.cleanup) {
         episodeResources.cleanup();
       }
@@ -96,10 +121,27 @@ export const streamHandler: RequestHandler = async (request, response) => {
     });
 
     episode.transcoder.on('error', (error: Error) => {
-      console.error(
-        `[streamHandler] Request ${requestId} - Transcoder error:`,
-        error
-      );
+      // "Output stream closed" is expected when client disconnects
+      const isExpectedDisconnect =
+        error.message === 'Output stream closed' ||
+        error.message.includes('stream closed') ||
+        error.message.includes('EPIPE') ||
+        error.message.includes('ECONNRESET');
+
+      if (isExpectedDisconnect) {
+        console.log(
+          `[streamHandler] Request ${requestId} - Client disconnected, transcoder stream closed (expected)`
+        );
+        // Trigger cleanup on expected disconnect
+        if (episodeResources?.cleanup) {
+          episodeResources.cleanup();
+        }
+      } else {
+        console.error(
+          `[streamHandler] Request ${requestId} - Transcoder error:`,
+          error
+        );
+      }
     });
 
     response.on('error', (error: Error) => {

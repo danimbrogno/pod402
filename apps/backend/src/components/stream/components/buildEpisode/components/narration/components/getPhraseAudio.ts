@@ -9,7 +9,7 @@ export async function* getPhraseAudio(
   text: string
 ): AsyncGenerator<void, void, unknown> {
   const {
-    openai: { instructions },
+    openai: { speechInstruction: instructions },
     levels,
   } = config;
 

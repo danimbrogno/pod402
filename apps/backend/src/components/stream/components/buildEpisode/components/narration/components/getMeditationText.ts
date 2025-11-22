@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
+import { StreamConfig } from '../../../../interface';
 
 export async function* getMeditationText(
+  config: StreamConfig,
   openai: OpenAI,
   prompt: string
 ): AsyncGenerator<string, void, unknown> {
@@ -12,7 +14,13 @@ export async function* getMeditationText(
 
   const stream = await openai.chat.completions.create({
     model: 'gpt-5-nano',
-    messages: [{ role: 'user', content: prompt }],
+    messages: [
+      { role: 'user', content: prompt },
+      {
+        role: 'system',
+        content: config.openai.textInstruction,
+      },
+    ],
     stream: true,
   });
 

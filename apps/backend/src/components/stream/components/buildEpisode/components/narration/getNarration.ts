@@ -26,23 +26,12 @@ export const getNarration = async (
       const { delayAfterNarrationParagraph, delayBeforeFirstNarration } =
         config.timing;
 
-      // Wait for the initial delay before starting narration
-      if (delayBeforeFirstNarration > 0 && !isAborted) {
-        console.log(
-          `[getNarration] Waiting ${delayBeforeFirstNarration}s before first narration...`
-        );
-        await new Promise((resolve) =>
-          setTimeout(resolve, delayBeforeFirstNarration * 1000)
-        );
-      }
-
-      if (isAborted) {
-        console.log('[getNarration] Aborted during initial delay');
-        return;
-      }
-
       let paragraphIndex = 0;
-      for await (const paragraph of getMeditationText(openai, prompt)) {
+      let isFirstParagraph = true;
+
+      // Start generating text immediately - don't wait for delay
+      // The delay will be applied after the first paragraph's audio is generated
+      for await (const paragraph of getMeditationText(config, openai, prompt)) {
         if (isAborted) {
           console.log(
             `[getNarration] Aborted during paragraph ${
@@ -56,6 +45,24 @@ export const getNarration = async (
         console.log(
           `[getNarration] Processing paragraph ${paragraphIndex}, waiting for previous to finish...`
         );
+
+        // Apply delay before first narration (if configured) - but only after we have the text
+        if (isFirstParagraph && delayBeforeFirstNarration > 0 && !isAborted) {
+          console.log(
+            `[getNarration] Waiting ${delayBeforeFirstNarration}s before first narration playback...`
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, delayBeforeFirstNarration * 1000)
+          );
+          isFirstParagraph = false;
+        }
+
+        if (isAborted) {
+          console.log(
+            `[getNarration] Aborted during paragraph ${paragraphIndex} processing`
+          );
+          break;
+        }
 
         // Wait for the previous phrase's audio to finish before starting the next one
         for await (const _ of getPhraseAudio(
@@ -72,6 +79,10 @@ export const getNarration = async (
             );
             break;
           }
+        }
+
+        if (isFirstParagraph) {
+          isFirstParagraph = false;
         }
 
         if (isAborted) break;
