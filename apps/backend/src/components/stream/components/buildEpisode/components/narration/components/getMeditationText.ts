@@ -1,8 +1,8 @@
 import OpenAI from 'openai';
-import { StreamConfig } from '../../../../interface';
+import { Config } from '../../../../../../../interface';
 
 export async function* getMeditationText(
-  config: StreamConfig,
+  config: Config,
   openai: OpenAI,
   prompt: string
 ): AsyncGenerator<string, void, unknown> {
@@ -25,43 +25,51 @@ export async function* getMeditationText(
   });
 
   console.log('[getMeditationText] Stream started, waiting for chunks...');
-  let currentParagraph = '';
-  let paragraphCount = 0;
+  let currentSentence = '';
+  let sentenceCount = 0;
   let totalChunks = 0;
+
+  // Helper function to find sentence endings
+  // Sentences end with . ! or ? followed by space, newline, or end of string
+  const findSentenceEnd = (text: string): number => {
+    // Look for sentence-ending punctuation followed by whitespace or end of string
+    const sentenceEndRegex = /[.!?](?:\s+|$)/;
+    const match = text.match(sentenceEndRegex);
+    return match ? match.index! + match[0].length : -1;
+  };
 
   for await (const chunk of stream) {
     const content = chunk.choices[0]?.delta?.content || '';
 
     if (content) {
       totalChunks++;
-      currentParagraph += content;
+      currentSentence += content;
 
-      // Check for paragraph breaks (double newline)
-      // Handle cases where newlines might be split across chunks
-      let paragraphEndIndex = currentParagraph.indexOf('\n\n');
+      // Check for sentence endings
+      let sentenceEndIndex = findSentenceEnd(currentSentence);
 
-      while (paragraphEndIndex !== -1) {
-        // Extract the complete paragraph (everything before the double newline)
-        const completeParagraph = currentParagraph
-          .substring(0, paragraphEndIndex)
+      while (sentenceEndIndex !== -1) {
+        // Extract the complete sentence (everything before the sentence ending)
+        const completeSentence = currentSentence
+          .substring(0, sentenceEndIndex)
           .trim();
 
-        if (completeParagraph) {
-          paragraphCount++;
+        if (completeSentence) {
+          sentenceCount++;
           const preview =
-            completeParagraph.substring(0, 50) +
-            (completeParagraph.length > 50 ? '...' : '');
+            completeSentence.substring(0, 50) +
+            (completeSentence.length > 50 ? '...' : '');
           console.log(
-            `[getMeditationText] Paragraph ${paragraphCount} yielded (${completeParagraph.length} chars): "${preview}"`
+            `[getMeditationText] Sentence ${sentenceCount} yielded (${completeSentence.length} chars): "${preview}"`
           );
-          yield completeParagraph;
+          yield completeSentence;
         }
 
-        // Remove the yielded paragraph and the double newline from the buffer
-        currentParagraph = currentParagraph.substring(paragraphEndIndex + 2);
+        // Remove the yielded sentence from the buffer
+        currentSentence = currentSentence.substring(sentenceEndIndex).trim();
 
-        // Check if there are more paragraph breaks in the remaining text
-        paragraphEndIndex = currentParagraph.indexOf('\n\n');
+        // Check if there are more sentence endings in the remaining text
+        sentenceEndIndex = findSentenceEnd(currentSentence);
       }
     }
   }
@@ -70,20 +78,19 @@ export async function* getMeditationText(
     `[getMeditationText] Stream completed. Total chunks received: ${totalChunks}`
   );
 
-  // Yield any remaining text as the final paragraph
-  const finalParagraph = currentParagraph.trim();
-  if (finalParagraph) {
-    paragraphCount++;
+  // Yield any remaining text as the final sentence
+  const finalSentence = currentSentence.trim();
+  if (finalSentence) {
+    sentenceCount++;
     const preview =
-      finalParagraph.substring(0, 50) +
-      (finalParagraph.length > 50 ? '...' : '');
+      finalSentence.substring(0, 50) + (finalSentence.length > 50 ? '...' : '');
     console.log(
-      `[getMeditationText] Final paragraph ${paragraphCount} yielded (${finalParagraph.length} chars): "${preview}"`
+      `[getMeditationText] Final sentence ${sentenceCount} yielded (${finalSentence.length} chars): "${preview}"`
     );
-    yield finalParagraph;
+    yield finalSentence;
   }
 
   console.log(
-    `[getMeditationText] Completed. Total paragraphs: ${paragraphCount}`
+    `[getMeditationText] Completed. Total sentences: ${sentenceCount}`
   );
 }

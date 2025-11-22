@@ -2,9 +2,9 @@ import { StreamAudioContext } from 'web-audio-engine';
 
 import {
   StreamAudioContext as StreamAudioContextType,
-  StreamConfig,
-} from '../../interface';
-export function getAudioContext(config: StreamConfig) {
+  Config,
+} from '../../../../../interface';
+export function getAudioContext(config: Config) {
   const context = new StreamAudioContext() as StreamAudioContextType;
 
   const gain = context.createGain();

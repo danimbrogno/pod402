@@ -1,11 +1,10 @@
 import { getAmbientAudio } from './components/getAmbientAudio';
-import { PassThrough } from 'stream';
-import { StreamConfig } from '../interface';
+import { Config } from '../../../../interface';
 import { getAudioContext } from './components/getAudioContext';
 import { transcode } from './components/transcode';
 import { getNarration } from './components/narration/getNarration';
 
-export const buildEpisode = async (config: StreamConfig, prompt: string) => {
+export const buildEpisode = async (config: Config, prompt: string) => {
   console.log('[buildEpisode] Starting episode build');
 
   // Initialize the audio engine

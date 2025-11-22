@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { StreamConfig } from '../../../interface';
+import { Config } from '../../../../../../interface';
 import { getMeditationText } from './components/getMeditationText';
 import { getPhraseAudio } from './components/getPhraseAudio';
 
@@ -8,7 +8,7 @@ const openai = new OpenAI({
 });
 
 export const getNarration = async (
-  config: StreamConfig,
+  config: Config,
   context: AudioContext,
   destination: AudioNode,
   prompt: string
@@ -19,47 +19,47 @@ export const getNarration = async (
   const abortController = new AbortController();
   let isAborted = false;
 
-  // Process paragraphs sequentially without blocking the caller
-  // Each paragraph will play its audio, and the next will start when the previous finishes
+  // Process sentences sequentially without blocking the caller
+  // Each sentence will play its audio, and the next will start when the previous finishes
   const narrationPromise = (async () => {
     try {
-      const { delayAfterNarrationParagraph, delayBeforeFirstNarration } =
+      const { delayAfterNarrationSentence, delayBeforeFirstNarration } =
         config.timing;
 
-      let paragraphIndex = 0;
-      let isFirstParagraph = true;
+      let sentenceIndex = 0;
+      let isFirstSentence = true;
 
       // Start generating text immediately - don't wait for delay
-      // The delay will be applied after the first paragraph's audio is generated
-      for await (const paragraph of getMeditationText(config, openai, prompt)) {
+      // The delay will be applied after the first sentence's audio is generated
+      for await (const sentence of getMeditationText(config, openai, prompt)) {
         if (isAborted) {
           console.log(
-            `[getNarration] Aborted during paragraph ${
-              paragraphIndex + 1
+            `[getNarration] Aborted during sentence ${
+              sentenceIndex + 1
             } generation`
           );
           break;
         }
 
-        paragraphIndex++;
+        sentenceIndex++;
         console.log(
-          `[getNarration] Processing paragraph ${paragraphIndex}, waiting for previous to finish...`
+          `[getNarration] Processing sentence ${sentenceIndex}, waiting for previous to finish...`
         );
 
         // Apply delay before first narration (if configured) - but only after we have the text
-        if (isFirstParagraph && delayBeforeFirstNarration > 0 && !isAborted) {
+        if (isFirstSentence && delayBeforeFirstNarration > 0 && !isAborted) {
           console.log(
             `[getNarration] Waiting ${delayBeforeFirstNarration}s before first narration playback...`
           );
           await new Promise((resolve) =>
             setTimeout(resolve, delayBeforeFirstNarration * 1000)
           );
-          isFirstParagraph = false;
+          isFirstSentence = false;
         }
 
         if (isAborted) {
           console.log(
-            `[getNarration] Aborted during paragraph ${paragraphIndex} processing`
+            `[getNarration] Aborted during sentence ${sentenceIndex} processing`
           );
           break;
         }
@@ -70,39 +70,39 @@ export const getNarration = async (
           openai,
           context,
           destination,
-          paragraph
+          sentence
         )) {
           // Generator yields when audio playback completes
           if (isAborted) {
             console.log(
-              `[getNarration] Aborted during paragraph ${paragraphIndex} audio playback`
+              `[getNarration] Aborted during sentence ${sentenceIndex} audio playback`
             );
             break;
           }
         }
 
-        if (isFirstParagraph) {
-          isFirstParagraph = false;
+        if (isFirstSentence) {
+          isFirstSentence = false;
         }
 
         if (isAborted) break;
 
         console.log(
-          `[getNarration] Paragraph ${paragraphIndex} audio completed`
+          `[getNarration] Sentence ${sentenceIndex} audio completed`
         );
 
-        // Add delay after paragraph (except for the last one, which will be handled by the stream ending)
-        if (delayAfterNarrationParagraph > 0 && !isAborted) {
+        // Add delay after sentence (except for the last one, which will be handled by the stream ending)
+        if (delayAfterNarrationSentence > 0 && !isAborted) {
           console.log(
-            `[getNarration] Waiting ${delayAfterNarrationParagraph}s before next paragraph...`
+            `[getNarration] Waiting ${delayAfterNarrationSentence}s before next sentence...`
           );
           await new Promise((resolve) =>
-            setTimeout(resolve, delayAfterNarrationParagraph * 1000)
+            setTimeout(resolve, delayAfterNarrationSentence * 1000)
           );
         }
       }
       if (!isAborted) {
-        console.log('[getNarration] All narration paragraphs completed');
+        console.log('[getNarration] All narration sentences completed');
       }
     } catch (error) {
       if (!isAborted) {

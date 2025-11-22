@@ -8,23 +8,25 @@ import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { appRouter, createContext } from '@project/trpc';
 import { paymentMiddleware, Network } from 'x402-express';
 import { streamHandler } from './components/stream/stream';
-import { facilitator } from '@coinbase/x402'; // For mainnet
+import { initializeAmbientAudioCache } from './components/stream/components/buildEpisode/components/ambientAudioCache';
+import { getConfig } from './getConfig';
 
 const PORT = process.env.PORT || 3000;
 
 // Store server instance for cleanup on reload
 let server: Server | null = null;
 
+const config = getConfig({
+  ffmpegPath: process.env.FFMPEG_PATH,
+  ffprobePath: process.env.FFPROBE_PATH,
+  environment:
+    process.env.ENVIRONMENT === 'development' ? 'development' : 'production',
+});
+
 function createServer() {
   const app = express();
 
   const environment = process.env.ENVIRONMENT || 'development';
-  const config = {
-    environment,
-    receivingWallet: process.env.RECEIVING_WALLET,
-    network: environment === 'production' ? 'base' : 'base-sepolia',
-    facilitator: environment === 'production' ? facilitator : undefined,
-  };
 
   // Enable CORS
   app.use(cors());
@@ -64,8 +66,8 @@ function createServer() {
   );
 
   // Stream audio endpoint
-  app.get('/stream', streamHandler);
-  app.get('/free-stream', streamHandler);
+  app.get('/stream', streamHandler(config));
+  app.get('/free-stream', streamHandler(config));
 
   // tRPC endpoint
   app.use(
@@ -115,7 +117,17 @@ if (global.__server__) {
   start();
 }
 
-function start() {
+async function start() {
+  // Initialize ambient audio cache before starting server
+  console.log('🔄 Initializing ambient audio cache...');
+  try {
+    await initializeAmbientAudioCache(config);
+    console.log('✅ Ambient audio cache ready');
+  } catch (error) {
+    console.error('⚠️ Failed to initialize ambient audio cache:', error);
+    console.log('⚠️ Ambient audio will be loaded from disk on demand');
+  }
+
   // Create and start server
   const app = createServer();
   server = app.listen(PORT, () => {

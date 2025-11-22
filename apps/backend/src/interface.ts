@@ -4,7 +4,11 @@ export type StreamAudioContext = AudioContext & {
   pipe: (stream: PassThrough) => PassThrough;
 };
 
-export type StreamConfig = {
+export type Config = {
+  environment: 'development' | 'production';
+  receivingWallet: string;
+  network: string;
+  facilitator: string | undefined;
   channels: number;
   frequency: number;
   bytesPerSample?: number;
@@ -16,8 +20,9 @@ export type StreamConfig = {
     /** Path to ffprobe binary */
     ffprobePath: string;
   };
-  /** Interval that bell should chime in seconds */
-  bellInterval: number;
+  ambience: {
+    quality: 'dev' | 'prod';
+  };
   compressor: {
     threshold: number;
     knee: number;
@@ -28,8 +33,6 @@ export type StreamConfig = {
   levels: {
     ambience: number;
     narration: number;
-    fx: number;
-    speech: number;
   };
   timing: {
     /** Time in seconds we should wait ofter openai finishes delivering a sentence before the next sentence should start */

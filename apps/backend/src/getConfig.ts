@@ -1,13 +1,20 @@
-import { StreamConfig } from './interface';
+import { Config } from './interface';
+import { facilitator } from '@coinbase/x402'; // For mainnet
 
-export function getStreamConfig({
+export function getConfig({
   ffmpegPath,
   ffprobePath,
+  environment,
 }: {
   ffmpegPath: string;
   ffprobePath: string;
-}): StreamConfig {
+  environment: 'development' | 'production';
+}): Config {
   return {
+    environment,
+    receivingWallet: process.env.RECEIVING_WALLET,
+    network: environment === 'production' ? 'base' : 'base-sepolia',
+    facilitator: environment === 'production' ? facilitator : undefined,
     channels: 2,
     frequency: 44100,
     bytesPerSample: 2,
@@ -16,12 +23,12 @@ export function getStreamConfig({
       ffmpegPath,
       ffprobePath,
     },
-    bellInterval: 60,
+    ambience: {
+      quality: environment === 'development' ? 'dev' : 'prod',
+    },
     levels: {
       ambience: 0.25,
       narration: 0.75,
-      fx: 0.25,
-      speech: 0.75,
     },
     compressor: {
       threshold: -50,

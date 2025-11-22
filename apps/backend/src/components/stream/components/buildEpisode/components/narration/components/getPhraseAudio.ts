@@ -1,8 +1,8 @@
 import OpenAI from 'openai';
-import { StreamConfig } from '../../../../interface';
+import { Config } from '../../../../../../../interface';
 
 export async function* getPhraseAudio(
-  config: StreamConfig,
+  config: Config,
   openai: OpenAI,
   context: AudioContext,
   destination: AudioNode,
