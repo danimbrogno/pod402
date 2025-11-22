@@ -7,12 +7,15 @@ import { appRouter, createContext } from './index';
  * @returns HTTP server instance
  */
 export function createServer(port: number = 3000) {
-  return createHTTPServer({
+  const server = createHTTPServer({
     router: appRouter,
     createContext,
-  }).listen(port, () => {
+  });
+  // @ts-expect-error - createHTTPServer returns a server-like object with listen method
+  const httpServer = server.listen(port, () => {
     console.log(`tRPC server listening on http://localhost:${port}`);
   });
+  return httpServer;
 }
 
 /**

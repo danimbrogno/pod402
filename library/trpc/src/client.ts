@@ -13,6 +13,7 @@ export function createClient(url: string = 'http://localhost:3000') {
         url,
       }),
     ],
+    transformer: undefined,
   });
 }
 
