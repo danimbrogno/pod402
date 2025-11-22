@@ -31,7 +31,33 @@ npm run dev
 
 The server will start on `http://localhost:3000` (or the port specified in `PORT` environment variable).
 
-**Note:** Development uses `vite-node` which runs TypeScript directly without compilation, providing fast startup and hot module replacement.
+**Note:** Development uses `tsx watch` which runs TypeScript directly without compilation, providing fast startup and hot module replacement.
+
+## Cloudflare Tunnel (Expose Backend Publicly)
+
+Cloudflare tunnel configuration has been moved to the project root for multi-service support. 
+
+See the root `README.md` or run from the project root:
+
+### Quick Tunnel (Development)
+
+Start a quick tunnel that generates a random URL:
+
+```bash
+# From project root
+npm run tunnel:backend
+```
+
+Or start both server and tunnel together:
+```bash
+npm run tunnel:backend:all
+```
+
+This will output a URL like `https://random-subdomain.trycloudflare.com` that tunnels to your local `http://localhost:3000`.
+
+### Named Tunnel (Production)
+
+For persistent tunnels with custom domains, see the configuration in `.cloudflared/config.yml` at the project root.
 
 ## Production
 

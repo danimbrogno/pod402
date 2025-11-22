@@ -44,6 +44,9 @@ export default defineConfig(({ mode }) => {
     define: {
       ENVIRONMENT: env.ENVIRONMENT,
       RECEIVING_WALLET_ADDRESS: env.RECEIVING_WALLET_ADDRESS,
+      FFMPEG_PATH: env.FFMPEG_PATH,
+      FFPROBE_PATH: env.FFPROBE_PATH,
+      OPENAI_API_KEY: env.OPENAI_API_KEY,
     },
   };
 });

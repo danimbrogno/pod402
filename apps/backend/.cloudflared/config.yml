@@ -1,0 +1,16 @@
+# Cloudflared tunnel configuration for backend
+# For quick tunnels (dev), use: npm run tunnel
+# For named tunnels (production), use this config with: npm run tunnel:config
+
+# Quick tunnel example (no config needed - just runs):
+# cloudflared tunnel --url http://localhost:3000
+
+# Named tunnel configuration (requires cloudflared login first):
+# tunnel: <your-tunnel-id>
+# credentials-file: .cloudflared/<tunnel-id>.json
+#
+# ingress:
+#   - hostname: your-custom-domain.com
+#     service: http://localhost:3000
+#   - service: http_status:404
+
