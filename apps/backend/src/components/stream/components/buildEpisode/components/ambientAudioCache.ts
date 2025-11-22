@@ -1,15 +1,11 @@
 import { existsSync } from 'fs';
 import { promises as fsPromises } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { Config } from '../../../../../interface';
+import { getAssetsDir } from '../../../../../utils/getAssetsDir';
 
-// Get the directory path for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Resolve assets directory
-let ASSETS_DIR = join(__dirname, '../../../../../../assets/background');
+// Resolve assets directory using utility function
+const ASSETS_DIR = getAssetsDir();
 
 // Cache for ambient audio files (fileNum -> ArrayBuffer)
 const ambientAudioCache = new Map<string, ArrayBuffer>();
