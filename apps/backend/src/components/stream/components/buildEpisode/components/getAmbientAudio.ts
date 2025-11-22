@@ -23,15 +23,19 @@ export const getAmbientAudio = async (
   destination: AudioNode,
   fileNum: string
 ) => {
-  const fileName = `${String(fileNum).padStart(3, '0')}.wav`;
   const normalizedFileNum = String(fileNum).padStart(3, '0');
+  // Construct filename based on quality setting (dev uses _dev suffix)
+  const fileNumWithSuffix = `${normalizedFileNum}${
+    config.ambience.quality === 'dev' ? '_dev' : ''
+  }`;
+  const fileName = `${fileNumWithSuffix}.wav`;
 
   try {
     const { levels } = config;
     let arrayBuffer: ArrayBuffer;
 
-    // Try to get from cache first
-    const cachedAudio = getCachedAmbientAudio(normalizedFileNum);
+    // Try to get from cache first (cache uses fileNum with suffix as key)
+    const cachedAudio = getCachedAmbientAudio(fileNumWithSuffix);
     if (cachedAudio) {
       console.log(
         `[getAmbientAudio] Using cached audio for ${fileName} (instant load)`

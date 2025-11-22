@@ -7,12 +7,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Available OpenAI TTS voices
+const OPENAI_VOICES: Array<
+  'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+> = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+
 export const getNarration = async (
   config: Config,
   context: AudioContext,
   destination: AudioNode,
-  prompt: string
+  prompt: string,
+  onComplete?: () => Promise<void>
 ): Promise<() => void> => {
+  // Pick a random voice for this meditation session
+  const voice = OPENAI_VOICES[Math.floor(Math.random() * OPENAI_VOICES.length)];
+  console.log(`[getNarration] Selected voice: ${voice}`);
   console.log('[getNarration] Starting narration generation (non-blocking)');
 
   // Create an AbortController to allow cancellation
@@ -70,7 +79,8 @@ export const getNarration = async (
           openai,
           context,
           destination,
-          sentence
+          sentence,
+          voice
         )) {
           // Generator yields when audio playback completes
           if (isAborted) {
@@ -101,6 +111,11 @@ export const getNarration = async (
       }
       if (!isAborted) {
         console.log('[getNarration] All narration sentences completed');
+
+        // Call onComplete handler if provided
+        if (onComplete) {
+          await onComplete();
+        }
       }
     } catch (error) {
       if (!isAborted) {

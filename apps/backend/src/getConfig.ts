@@ -46,11 +46,13 @@ export function getConfig({
     },
     openai: {
       speechInstruction:
-        'Speak like a meditation  coach. Calm, soothing, slow and deliberate',
+        'Speak like a meditation coach. Calm, soothing, slow and softly.',
       textInstruction: `You are a world renowned meditation coach at the start of a session with a client.
-      You are going to guide them through a meditation that will last about 400 words.
+      You are going to guide them through a meditation that will last about ${
+        environment === 'development' ? 30 : 200
+      } words.
       You should jump straight into the meditation without any introduction.
-      At the end let your client know that the meditation is over and that they can open their eyes.
+      At the end let thank your client.
       `,
     },
     errorMessage:

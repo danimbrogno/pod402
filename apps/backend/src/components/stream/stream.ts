@@ -35,9 +35,34 @@ export const streamHandler =
     } | null = null;
 
     try {
+      // Callback to close response when meditation completes
+      const onMeditationComplete = () => {
+        console.log(
+          `[streamHandler] Request ${requestId} - Meditation completed, closing response`
+        );
+        if (!response.headersSent || !response.writableEnded) {
+          try {
+            // Unpipe transcoder if still connected
+            response.end();
+            if (episodeResources?.transcoder) {
+              episodeResources.transcoder.unpipe(response);
+            }
+            console.log(
+              `[streamHandler] Request ${requestId} - Response closed`
+            );
+          } catch (error) {
+            // Response may already be closed, ignore error
+            console.log(
+              `[streamHandler] Request ${requestId} - Response already closed`
+            );
+          }
+        }
+      };
+
       const episode = await buildEpisode(
         config,
-        request.query.prompt as string
+        request.query.prompt as string,
+        onMeditationComplete
       );
       episodeResources = episode;
       console.log(

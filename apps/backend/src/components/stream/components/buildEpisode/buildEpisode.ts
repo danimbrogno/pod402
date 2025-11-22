@@ -3,27 +3,23 @@ import { Config } from '../../../../interface';
 import { getAudioContext } from './components/getAudioContext';
 import { transcode } from './components/transcode';
 import { getNarration } from './components/narration/getNarration';
+import { fadeOutAndEnd } from './components/fadeOutAndEnd';
 
-export const buildEpisode = async (config: Config, prompt: string) => {
+export const buildEpisode = async (
+  config: Config,
+  prompt: string,
+  onComplete?: () => void
+) => {
   console.log('[buildEpisode] Starting episode build');
 
   // Initialize the audio engine
   const audioEngine = getAudioContext(config);
-
-  // Make length 5 minutes
   await audioEngine.context.resume();
   console.log('[buildEpisode] Audio context resumed');
 
   // Transcode the audio to mp3
   const transcoder = transcode(config, audioEngine.context);
   console.log('[buildEpisode] Transcoder created');
-
-  transcoder.on('end', () => {
-    console.log(
-      '[buildEpisode] Transcoder stream ended, closing audio context'
-    );
-    audioEngine.context.close();
-  });
 
   transcoder.on('error', (error: Error) => {
     // "Output stream closed" is expected when client disconnects
@@ -33,81 +29,87 @@ export const buildEpisode = async (config: Config, prompt: string) => {
       error.message.includes('EPIPE') ||
       error.message.includes('ECONNRESET');
 
-    if (isExpectedDisconnect) {
-      console.log(
-        '[buildEpisode] Client disconnected, transcoder stream closed (expected)'
-      );
-    } else {
+    if (!isExpectedDisconnect) {
       console.error('[buildEpisode] Transcoder error:', error);
     }
   });
 
-  // Start narration immediately (non-blocking) while ambient audio loads
-  // This allows text generation to begin right away
-  console.log('[buildEpisode] Starting narration generation immediately...');
-  const narrationCleanupPromise = getNarration(
-    config,
-    audioEngine.context,
-    audioEngine.destination,
-    prompt || 'Give me a meditation about gratitude'
+  // Pick a random background audio file (001-013)
+  const randomBackgroundNum = String(
+    Math.floor(Math.random() * 13) + 1
+  ).padStart(3, '0');
+  console.log(
+    `[buildEpisode] Selected random background audio: ${randomBackgroundNum}`
   );
 
-  // Load ambient audio (this can happen in parallel with narration starting)
+  // Load ambient audio
   console.log('[buildEpisode] Loading ambient audio...');
-  const ambientSource = await getAmbientAudio(
+  await getAmbientAudio(
     config,
     audioEngine.context,
     audioEngine.destination,
-    '001'
+    randomBackgroundNum
   );
   console.log('[buildEpisode] Ambient audio started');
 
-  // Get the cleanup function from narration (it returns immediately)
-  const narrationCleanup = await narrationCleanupPromise;
+  // Helper to terminate transcoder
+  const terminateTranscoder = () => {
+    if (!transcoder) return;
+    try {
+      if (typeof transcoder.kill === 'function') {
+        transcoder.kill('SIGTERM');
+      } else if (transcoder.ffmpegProc) {
+        transcoder.ffmpegProc.kill('SIGTERM');
+      }
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
+  };
+
+  // Handler for when narration completes
+  const onNarrationComplete = async () => {
+    console.log('[buildEpisode] Narration completed, starting fadeout');
+
+    const onPlaybackEnd = () => {
+      console.log('[buildEpisode] Meditation completed');
+      terminateTranscoder();
+      onComplete?.();
+    };
+
+    fadeOutAndEnd(config, audioEngine.gain, audioEngine.context, onPlaybackEnd);
+  };
+
+  // Start narration generation
+  await getNarration(
+    config,
+    audioEngine.context,
+    audioEngine.destination,
+    prompt || 'Give me a meditation about gratitude',
+    onNarrationComplete
+  );
   console.log('[buildEpisode] Narration generation started');
 
-  // Cleanup function to terminate all resources
+  // Cleanup function for manual abort (e.g., client disconnect)
   const cleanup = () => {
-    console.log('[buildEpisode] Starting cleanup of all resources...');
-
-    // Terminate narration
-    if (narrationCleanup) {
-      narrationCleanup();
-    }
-
-    // Kill transcoder/ffmpeg process
+    console.log('[buildEpisode] Manual cleanup requested');
     if (transcoder) {
-      console.log('[buildEpisode] Terminating transcoder/ffmpeg process');
       try {
-        // fluent-ffmpeg streams can be killed using kill()
         if (typeof transcoder.kill === 'function') {
           transcoder.kill('SIGTERM');
         } else if (transcoder.ffmpegProc) {
           transcoder.ffmpegProc.kill('SIGTERM');
         }
-        console.log('[buildEpisode] Transcoder process terminated');
       } catch (error) {
-        console.error('[buildEpisode] Error terminating transcoder:', error);
+        // Ignore errors during cleanup
       }
     }
-
-    // Close audio context
     if (audioEngine.context.state !== 'closed') {
-      console.log('[buildEpisode] Closing audio context');
       audioEngine.context.close();
     }
-
-    console.log('[buildEpisode] All resources cleaned up');
-  };
-
-  const begin = async () => {
-    console.log('start other things later');
-    // await Promise.all([backgroundBufferSource.start()]);
   };
 
   return {
     transcoder,
-    begin,
     cleanup,
     audioContext: audioEngine.context,
   };

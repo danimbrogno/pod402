@@ -6,7 +6,8 @@ export async function* getPhraseAudio(
   openai: OpenAI,
   context: AudioContext,
   destination: AudioNode,
-  text: string
+  text: string,
+  voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 ): AsyncGenerator<void, void, unknown> {
   const {
     openai: { speechInstruction: instructions },
@@ -16,12 +17,12 @@ export async function* getPhraseAudio(
   console.log(
     `[getPhraseAudio] Generating audio for phrase: "${text.substring(0, 50)}${
       text.length > 50 ? '...' : ''
-    }"`
+    }" with voice: ${voice}`
   );
 
   const wav = await openai.audio.speech.create({
     model: 'gpt-4o-mini-tts',
-    voice: 'coral',
+    voice,
     input: text,
     instructions,
 
