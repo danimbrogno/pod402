@@ -40,13 +40,9 @@ export const streamHandler =
         console.log(
           `[streamHandler] Request ${requestId} - Meditation completed, closing response`
         );
-        if (!response.headersSent || !response.writableEnded) {
+        if (!response.writableEnded && !response.destroyed) {
           try {
-            // Unpipe transcoder if still connected
             response.end();
-            if (episodeResources?.transcoder) {
-              episodeResources.transcoder.unpipe(response);
-            }
             console.log(
               `[streamHandler] Request ${requestId} - Response closed`
             );
@@ -118,63 +114,6 @@ export const streamHandler =
       request.on('aborted', () => {
         console.log(
           `[streamHandler] Request ${requestId} - Client request aborted`
-        );
-        if (episodeResources?.cleanup) {
-          episodeResources.cleanup();
-        }
-      });
-
-      response.on('close', () => {
-        console.log(
-          `[streamHandler] Request ${requestId} - Response stream closed`
-        );
-        // Unpipe the transcoder from the response to prevent further writes
-        if (episodeResources?.transcoder) {
-          try {
-            episodeResources.transcoder.unpipe(response);
-          } catch (error) {
-            // Ignore errors when unpiping already closed stream
-          }
-        }
-        if (episodeResources?.cleanup) {
-          episodeResources.cleanup();
-        }
-      });
-
-      response.on('finish', () => {
-        console.log(
-          `[streamHandler] Request ${requestId} - Response stream finished`
-        );
-      });
-
-      episode.transcoder.on('error', (error: Error) => {
-        // "Output stream closed" is expected when client disconnects
-        const isExpectedDisconnect =
-          error.message === 'Output stream closed' ||
-          error.message.includes('stream closed') ||
-          error.message.includes('EPIPE') ||
-          error.message.includes('ECONNRESET');
-
-        if (isExpectedDisconnect) {
-          console.log(
-            `[streamHandler] Request ${requestId} - Client disconnected, transcoder stream closed (expected)`
-          );
-          // Trigger cleanup on expected disconnect
-          if (episodeResources?.cleanup) {
-            episodeResources.cleanup();
-          }
-        } else {
-          console.error(
-            `[streamHandler] Request ${requestId} - Transcoder error:`,
-            error
-          );
-        }
-      });
-
-      response.on('error', (error: Error) => {
-        console.error(
-          `[streamHandler] Request ${requestId} - Response error:`,
-          error
         );
         if (episodeResources?.cleanup) {
           episodeResources.cleanup();

@@ -21,19 +21,6 @@ export const buildEpisode = async (
   const transcoder = transcode(config, audioEngine.context);
   console.log('[buildEpisode] Transcoder created');
 
-  transcoder.on('error', (error: Error) => {
-    // "Output stream closed" is expected when client disconnects
-    const isExpectedDisconnect =
-      error.message === 'Output stream closed' ||
-      error.message.includes('stream closed') ||
-      error.message.includes('EPIPE') ||
-      error.message.includes('ECONNRESET');
-
-    if (!isExpectedDisconnect) {
-      console.error('[buildEpisode] Transcoder error:', error);
-    }
-  });
-
   // Pick a random background audio file (001-013)
   const randomBackgroundNum = String(
     Math.floor(Math.random() * 13) + 1
@@ -52,46 +39,9 @@ export const buildEpisode = async (
   );
   console.log('[buildEpisode] Ambient audio started');
 
-  // Helper to terminate transcoder
-  const terminateTranscoder = () => {
-    if (!transcoder) return;
-    try {
-      if (typeof transcoder.kill === 'function') {
-        transcoder.kill('SIGTERM');
-      } else if (transcoder.ffmpegProc) {
-        transcoder.ffmpegProc.kill('SIGTERM');
-      }
-    } catch (error) {
-      // Ignore errors during cleanup
-    }
-  };
-
-  // Handler for when narration completes
-  const onNarrationComplete = async () => {
-    console.log('[buildEpisode] Narration completed, starting fadeout');
-
-    const onPlaybackEnd = () => {
-      console.log('[buildEpisode] Meditation completed');
-      terminateTranscoder();
-      onComplete?.();
-    };
-
-    fadeOutAndEnd(config, audioEngine.gain, audioEngine.context, onPlaybackEnd);
-  };
-
-  // Start narration generation
-  await getNarration(
-    config,
-    audioEngine.context,
-    audioEngine.destination,
-    prompt || 'Give me a meditation about gratitude',
-    onNarrationComplete
-  );
-  console.log('[buildEpisode] Narration generation started');
-
-  // Cleanup function for manual abort (e.g., client disconnect)
+  // Cleanup function for transcoder and audio context
   const cleanup = () => {
-    console.log('[buildEpisode] Manual cleanup requested');
+    console.log('[buildEpisode] Cleanup requested');
     if (transcoder) {
       try {
         if (typeof transcoder.kill === 'function') {
@@ -107,6 +57,29 @@ export const buildEpisode = async (
       audioEngine.context.close();
     }
   };
+
+  // Handler for when narration completes
+  const onNarrationComplete = async () => {
+    console.log('[buildEpisode] Narration completed, starting fadeout');
+
+    const onPlaybackEnd = () => {
+      console.log('[buildEpisode] Meditation completed');
+      cleanup();
+      onComplete?.();
+    };
+
+    fadeOutAndEnd(config, audioEngine.gain, audioEngine.context, onPlaybackEnd);
+  };
+
+  // Start narration generation
+  await getNarration(
+    config,
+    audioEngine.context,
+    audioEngine.destination,
+    prompt || 'Give me a meditation about gratitude',
+    onNarrationComplete
+  );
+  console.log('[buildEpisode] Narration generation started');
 
   return {
     transcoder,
