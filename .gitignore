@@ -48,3 +48,7 @@ storybook-static
 tunnel-credentials.json
 
 .npm-cache
+
+# Cloudflared tunnel credentials
+.cloudflared/*.json
+*.tunnel.json

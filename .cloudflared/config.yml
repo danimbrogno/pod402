@@ -1,0 +1,18 @@
+# Cloudflared tunnel configuration for multiple services
+# For quick tunnels (dev), use individual tunnel commands
+# For named tunnels (production), use this config with: npm run tunnel:config
+
+# Quick tunnel examples (no config needed):
+# Backend: cloudflared tunnel --url http://localhost:3000
+# Frontend: cloudflared tunnel --url http://localhost:4200
+
+# Named tunnel configuration (requires cloudflared login first):
+tunnel: pod402
+credentials-file: .cloudflared/pod402.json
+
+ingress:
+  # Backend API
+  - hostname: pod402.3vl.ca
+    service: http://localhost:3000
+  # Default catch-all
+  - service: http_status:404
