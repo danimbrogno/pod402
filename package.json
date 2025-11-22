@@ -16,18 +16,17 @@
     "tunnel": "cloudflared tunnel --config .cloudflared/config.yml run"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
-    "@types/react": "18.3.1",
-    "@types/react-dom": "18.3.0",
+    "@types/node": "^22",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^4.3.1",
     "tslib": "^2.6.2",
     "turbo": "^2.0.0",
-    "typescript": "^5.4.5",
-    "vite": "^5.1.0",
+    "typescript": "^5.9.2",
     "vitest": "^2.0.5"
   }
 }

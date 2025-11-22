@@ -11,8 +11,16 @@ tunnel: pod402
 credentials-file: .cloudflared/pod402.json
 
 ingress:
-  # Backend API
+  # Backend API - /demo route
   - hostname: pod402.3vl.ca
+    path: /demo*
     service: http://localhost:3000
+  # Backend API - /stream route
+  - hostname: pod402.3vl.ca
+    path: /stream*
+    service: http://localhost:3000
+  # Main2 app (Zen Den)
+  - hostname: pod402.3vl.ca
+    service: http://localhost:4000
   # Default catch-all
   - service: http_status:404

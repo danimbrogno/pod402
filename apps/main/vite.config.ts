@@ -1,37 +1,13 @@
+import { reactRouter } from '@react-router/dev/vite';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { resolve } from 'path';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
-export default defineConfig(() => ({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@project/common': resolve(__dirname, '../../library/common/src'),
-      '@project/drizzle': resolve(__dirname, '../../library/drizzle/src'),
-      '@project/trpc': resolve(__dirname, '../../library/trpc/src')
-    }
-  },
+export default defineConfig({
+  // @ts-expect-error - Monorepo type conflict between root and app node_modules
+  plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
   server: {
+    port: 4000,
     host: 'localhost',
-    port: 4200,
-    headers: {
-      // Allow the app to be embedded in frames (required for Farcaster Mini Apps)
-      'Content-Security-Policy': "frame-ancestors *;",
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin'
-    }
   },
-  preview: {
-    host: 'localhost',
-    port: 4300,
-    headers: {
-      // Allow the app to be embedded in frames (required for Farcaster Mini Apps)
-      'Content-Security-Policy': "frame-ancestors *;",
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin'
-    }
-  },
-  build: {
-    outDir: '../../dist/apps/main'
-  }
-}));
+});
