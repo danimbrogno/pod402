@@ -1,24 +1,12 @@
 import { RequestHandler } from 'express';
 import { createReadStream, statSync, existsSync, ReadStream } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { buildEpisode } from './components/buildEpisode/buildEpisode';
 import { Config } from '../../interface';
+import { getAssetsDir } from '../../utils/getAssetsDir';
 
-// Get the directory path for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Resolve assets directory - works in both dev and production
-// In dev: __dirname = apps/backend/src, so join(__dirname, '../assets/background') works
-// In production: adjust path as needed
-let ASSETS_DIR = join(__dirname, '../../assets/background');
-
-// If assets don't exist in relative path (production build), try absolute from project root
-if (!existsSync(ASSETS_DIR)) {
-  // In production, the file is in dist/apps/backend, so go up to workspace root
-  ASSETS_DIR = join(__dirname, '../../../../../apps/backend/assets/background');
-}
+// Resolve assets directory using utility function
+const ASSETS_DIR = getAssetsDir();
 
 export const streamHandler =
   (config: Config): RequestHandler =>

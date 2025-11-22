@@ -1,21 +1,15 @@
 import { existsSync } from 'fs';
 import { promises as fsPromises } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { Config } from '../../../../../interface';
 import {
   getCachedAmbientAudio,
   isCached,
 } from './ambientAudioCache';
+import { getAssetsDir } from '../../../../../utils/getAssetsDir';
 
-// Get the directory path for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Resolve assets directory - works in both dev and production
-// In dev: __dirname = apps/backend/src, so join(__dirname, '../assets/background') works
-// In production: adjust path as needed
-let ASSETS_DIR = join(__dirname, '../../../../../../assets/background');
+// Resolve assets directory using utility function
+const ASSETS_DIR = getAssetsDir();
 
 export const getAmbientAudio = async (
   config: Config,
