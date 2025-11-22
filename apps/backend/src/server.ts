@@ -19,6 +19,7 @@ let server: Server | null = null;
 const config = getConfig({
   ffmpegPath: process.env.FFMPEG_PATH,
   ffprobePath: process.env.FFPROBE_PATH,
+  receivingWallet: process.env.RECEIVING_WALLET,
   environment:
     process.env.ENVIRONMENT === 'development' ? 'development' : 'production',
 });

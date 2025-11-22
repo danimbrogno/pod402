@@ -58,9 +58,9 @@ RUN npm ci --omit=dev
 # Copy built application from builder stage
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 
-# Copy assets to a known location in the image
-# Default location: /app/assets/background
-COPY apps/backend/assets ./assets
+# Create assets directory for manual mounting
+# Assets will be mounted as a volume at runtime
+RUN mkdir -p /app/assets/background
 
 # Set environment variables
 ENV NODE_ENV=production

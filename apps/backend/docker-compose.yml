@@ -18,6 +18,9 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - RECEIVING_WALLET_ADDRESS=${RECEIVING_WALLET_ADDRESS:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    # Mount audio assets manually at runtime
+    # volumes:
+    #   - /path/to/your/assets:/app/assets:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]

@@ -5,14 +5,16 @@ export function getConfig({
   ffmpegPath,
   ffprobePath,
   environment,
+  receivingWallet,
 }: {
   ffmpegPath: string;
   ffprobePath: string;
+  receivingWallet: string;
   environment: 'development' | 'production';
 }): Config {
   return {
     environment,
-    receivingWallet: process.env.RECEIVING_WALLET,
+    receivingWallet,
     network: environment === 'production' ? 'base' : 'base-sepolia',
     facilitator: environment === 'production' ? facilitator : undefined,
     channels: 2,
