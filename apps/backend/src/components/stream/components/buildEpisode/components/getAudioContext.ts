@@ -7,10 +7,6 @@ import {
 export function getAudioContext(config: Config) {
   const context = new StreamAudioContext() as StreamAudioContextType;
 
-  // Master gain that controls when audio starts streaming (starts muted)
-  const masterGain = context.createGain();
-  masterGain.gain.value = 0; // Start muted - will be unmuted when first narration is ready
-  
   const gain = context.createGain();
   gain.gain.value = 1;
   const compressor = context.createDynamicsCompressor();
@@ -20,15 +16,7 @@ export function getAudioContext(config: Config) {
   compressor.attack.value = config.compressor.attack;
   compressor.release.value = config.compressor.release;
 
-  // Connect: masterGain -> gain -> compressor -> destination
-  masterGain.connect(gain);
-  compressor.connect(masterGain);
-  gain.connect(context.destination);
+  compressor.connect(gain).connect(context.destination);
 
-  return { 
-    context, 
-    gain, 
-    destination: compressor,
-    masterGain // Expose master gain so we can unmute it when ready
-  };
+  return { context, gain, destination: compressor };
 }
