@@ -7,7 +7,8 @@ export async function* getPhraseAudio(
   context: AudioContext,
   destination: AudioNode,
   text: string,
-  voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+  voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
+  onAudioReady?: () => void
 ): AsyncGenerator<void, void, unknown> {
   const {
     openai: { speechInstruction: instructions },
@@ -44,6 +45,12 @@ export async function* getPhraseAudio(
   } catch (error) {
     console.error(`[getPhraseAudio] Failed to decode audio:`, error);
     throw error;
+  }
+
+  // Call onAudioReady callback if provided (for first audio) - this signals that audio is ready to play
+  if (onAudioReady) {
+    console.log(`[getPhraseAudio] First audio ready, calling onAudioReady callback`);
+    onAudioReady();
   }
 
   const source = context.createBufferSource();
