@@ -16,12 +16,30 @@ export const getNarration = async (
   config: Config,
   context: AudioContext,
   destination: AudioNode,
-  prompt: string,
+  narrationOptions: {
+    prompt: string;
+    voice?: string;
+  },
   onComplete?: () => Promise<void>
 ): Promise<() => void> => {
-  // Pick a random voice for this meditation session
-  const voice = OPENAI_VOICES[Math.floor(Math.random() * OPENAI_VOICES.length)];
-  console.log(`[getNarration] Selected voice: ${voice}`);
+  const { prompt, voice: voiceOverride } = narrationOptions;
+
+  // Use provided voice or pick a random voice for this meditation session
+  const voice =
+    voiceOverride && OPENAI_VOICES.includes(voiceOverride as any)
+      ? (voiceOverride as
+          | 'alloy'
+          | 'echo'
+          | 'fable'
+          | 'onyx'
+          | 'nova'
+          | 'shimmer')
+      : OPENAI_VOICES[Math.floor(Math.random() * OPENAI_VOICES.length)];
+  console.log(
+    `[getNarration] Selected voice: ${voice}${
+      voiceOverride ? ' (from query)' : ' (random)'
+    }`
+  );
   console.log('[getNarration] Starting narration generation (non-blocking)');
 
   // Create an AbortController to allow cancellation

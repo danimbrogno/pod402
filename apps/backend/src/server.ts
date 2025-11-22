@@ -44,7 +44,7 @@ function createServer() {
         // Route configurations for protected endpoints
         'GET /stream': {
           // USDC amount in dollars
-          price: '$0.001',
+          price: '$0.01',
           network: 'base-sepolia', // for mainnet, see Running on Mainnet section
           // Optional: Add metadata for better discovery in x402 Bazaar
           config: {
@@ -54,21 +54,35 @@ function createServer() {
               properties: {
                 prompt: {
                   type: 'string',
-                  description: 'Prompt for the meditation',
+                  description:
+                    'The meditation prompt or topic. Describes what kind of meditation you want (e.g., "gratitude", "mindfulness", "sleep", "anxiety relief"). If not provided, defaults to a general gratitude meditation.',
+                },
+                voice: {
+                  type: 'string',
+                  enum: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
+                  description:
+                    'The voice to use for narration. Valid values: "alloy", "echo", "fable", "onyx", "nova", "shimmer". If not provided or invalid, a random voice will be selected.',
+                },
+                ambience: {
+                  type: 'string',
+                  description:
+                    'The ambient background audio track number (1-13). Each number corresponds to a different ambient soundscape. If not provided or invalid, a random ambient track will be selected.',
+                  pattern: '^([1-9]|1[0-3])$',
                 },
               },
             },
             outputSchema: null,
           },
         },
-      }
+      },
+      config.environment === 'production' ? config.facilitator : undefined
       // TODO: implement facilitator for production
     )
   );
 
   // Stream audio endpoint
   app.get('/stream', streamHandler(config));
-  app.get('/free-stream', streamHandler(config));
+  app.get('/demo', streamHandler(config));
 
   // tRPC endpoint
   app.use(

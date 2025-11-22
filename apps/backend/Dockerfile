@@ -60,11 +60,11 @@ COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 
 # Create assets directory for manual mounting
 # Assets will be mounted as a volume at runtime
-RUN mkdir -p /app/assets/background
+RUN mkdir -p /app/assets
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV ASSETS_PATH=/app/assets/background
+ENV ASSETS_PATH=/app/assets
 ENV PORT=3000
 ENV FFMPEG_PATH=/usr/bin/ffmpeg
 ENV FFPROBE_PATH=/usr/bin/ffprobe

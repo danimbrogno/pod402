@@ -11,7 +11,7 @@ services:
       - "${PORT:-3000}:3000"
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - ASSETS_PATH=${ASSETS_PATH:-/app/assets/background}
+      - ASSETS_PATH=${ASSETS_PATH:-/app/assets}
       - PORT=${PORT:-3000}
       - FFMPEG_PATH=${FFMPEG_PATH:-/usr/bin/ffmpeg}
       - FFPROBE_PATH=${FFPROBE_PATH:-/usr/bin/ffprobe}

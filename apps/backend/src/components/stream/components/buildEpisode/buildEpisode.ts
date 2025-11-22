@@ -7,8 +7,12 @@ import { fadeOutAndEnd } from './components/fadeOutAndEnd';
 
 export const buildEpisode = async (
   config: Config,
-  prompt: string,
-  onComplete?: () => void
+  onComplete?: () => void,
+  options?: {
+    prompt?: string;
+    voice?: string;
+    ambience?: string;
+  }
 ) => {
   console.log('[buildEpisode] Starting episode build');
 
@@ -21,12 +25,26 @@ export const buildEpisode = async (
   const transcoder = transcode(config, audioEngine.context);
   console.log('[buildEpisode] Transcoder created');
 
-  // Pick a random background audio file (001-013)
-  const randomBackgroundNum = String(
-    Math.floor(Math.random() * 13) + 1
-  ).padStart(3, '0');
+  // Use provided ambience or pick a random ambient audio file (001-013)
+  let ambientNum: string;
+  if (options?.ambience) {
+    const ambienceNum = parseInt(options.ambience, 10);
+    // Validate ambience is between 1-13
+    if (isNaN(ambienceNum) || ambienceNum < 1 || ambienceNum > 13) {
+      console.warn(
+        `[buildEpisode] Invalid ambience value: ${options.ambience}, using random instead`
+      );
+      ambientNum = String(Math.floor(Math.random() * 13) + 1).padStart(3, '0');
+    } else {
+      ambientNum = String(ambienceNum).padStart(3, '0');
+    }
+  } else {
+    ambientNum = String(Math.floor(Math.random() * 13) + 1).padStart(3, '0');
+  }
   console.log(
-    `[buildEpisode] Selected random background audio: ${randomBackgroundNum}`
+    `[buildEpisode] Selected ambient audio: ${ambientNum}${
+      options?.ambience ? ' (from query)' : ' (random)'
+    }`
   );
 
   // Load ambient audio
@@ -35,7 +53,7 @@ export const buildEpisode = async (
     config,
     audioEngine.context,
     audioEngine.destination,
-    randomBackgroundNum
+    ambientNum
   );
   console.log('[buildEpisode] Ambient audio started');
 
@@ -76,7 +94,10 @@ export const buildEpisode = async (
     config,
     audioEngine.context,
     audioEngine.destination,
-    prompt || 'Give me a meditation about gratitude',
+    {
+      prompt: options?.prompt || 'Give me a meditation about gratitude',
+      voice: options?.voice,
+    },
     onNarrationComplete
   );
   console.log('[buildEpisode] Narration generation started');

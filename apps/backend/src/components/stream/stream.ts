@@ -37,11 +37,11 @@ export const streamHandler =
         }
       };
 
-      const episode = await buildEpisode(
-        config,
-        request.query.prompt as string,
-        onMeditationComplete
-      );
+      const episode = await buildEpisode(config, onMeditationComplete, {
+        prompt: request.query.prompt as string | undefined,
+        voice: request.query.voice as string | undefined,
+        ambience: request.query.ambience as string | undefined,
+      });
       episodeResources = episode;
       console.log(
         `[streamHandler] Request ${requestId} - Episode build completed`

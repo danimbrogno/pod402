@@ -30,27 +30,30 @@ export function getAssetsDir(): string {
 
   // Try relative path from current file location (for development)
   // In dev: __dirname = apps/backend/src/utils, so go up to assets
-  let assetsDir = join(__dirname, '../../assets/background');
+  let assetsDir = join(__dirname, '../../assets');
   if (existsSync(assetsDir)) {
     return assetsDir;
   }
 
   // Try alternative relative path (for production builds)
   // In production: dist structure might be different
-  assetsDir = join(__dirname, '../../../../assets/background');
+  assetsDir = join(__dirname, '../../../../assets');
   if (existsSync(assetsDir)) {
     return assetsDir;
   }
 
   // Fallback: try from project root
-  assetsDir = join(__dirname, '../../../../../apps/backend/assets/background');
+  assetsDir = join(__dirname, '../../../../../apps/backend/assets');
   if (existsSync(assetsDir)) {
     return assetsDir;
   }
 
   // If none found, return the first attempted path and log a warning
   console.warn(
-    `[getAssetsDir] Assets directory not found. Tried multiple paths. Using fallback: ${join(__dirname, '../../assets/background')}`
+    `[getAssetsDir] Assets directory not found. Tried multiple paths. Using fallback: ${join(
+      __dirname,
+      '../../assets'
+    )}`
   );
-  return join(__dirname, '../../assets/background');
+  return join(__dirname, '../../assets');
 }

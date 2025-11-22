@@ -37,7 +37,7 @@ export const getAmbientAudio = async (
       console.log(
         `[getAmbientAudio] Cache miss for ${fileName}, loading from disk...`
       );
-      const filePath = join(ASSETS_DIR, 'backgrounds', fileName);
+      const filePath = join(ASSETS_DIR, 'ambient', fileName);
 
       // Check if file exists
       if (!existsSync(filePath)) {

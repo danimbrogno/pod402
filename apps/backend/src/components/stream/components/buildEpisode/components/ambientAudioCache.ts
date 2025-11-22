@@ -40,7 +40,7 @@ export async function initializeAmbientAudioCache(
 
   for (const fileNum of filesToLoad) {
     const fileName = `${fileNum}.wav`;
-    const filePath = join(ASSETS_DIR, 'backgrounds', fileName);
+    const filePath = join(ASSETS_DIR, 'ambient', fileName);
 
     if (!existsSync(filePath)) {
       continue; // Skip files that don't exist
