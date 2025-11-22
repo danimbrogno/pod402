@@ -39,9 +39,7 @@ export function getConfig({
     },
     timing: {
       delayAfterNarrationSentence: 1.5,
-      delayAfterNarrationParagraph: 11,
-      delayBeforeFirstNarration: 2,
-      delayBeforeUnguidedWelcome: 4,
+      delayBeforeFirstNarration: 0,
       fadeIn: 3,
       fadeOut: 10,
       maxLength: 60 * 60,

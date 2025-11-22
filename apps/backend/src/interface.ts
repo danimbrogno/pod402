@@ -37,12 +37,10 @@ export type Config = {
   timing: {
     /** Time in seconds we should wait ofter openai finishes delivering a sentence before the next sentence should start */
     delayAfterNarrationSentence: number;
-    /** Time in seconds we should wait after openai finishe delivering a paragraph to when the next sentence should start */
-    delayAfterNarrationParagraph: number;
+
     /** Time in seconds before narration should begin */
     delayBeforeFirstNarration: number;
-    /** Delay before welcome during unguided meditations */
-    delayBeforeUnguidedWelcome: number;
+
     /** Time in seconds from when the meditation begins to when playback should be at full volume */
     fadeIn: number;
     /** Time in seconds from when the meditation ends to when playback should be at full volume */

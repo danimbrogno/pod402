@@ -87,9 +87,7 @@ export const getNarration = async (
 
         if (isAborted) break;
 
-        console.log(
-          `[getNarration] Sentence ${sentenceIndex} audio completed`
-        );
+        console.log(`[getNarration] Sentence ${sentenceIndex} audio completed`);
 
         // Add delay after sentence (except for the last one, which will be handled by the stream ending)
         if (delayAfterNarrationSentence > 0 && !isAborted) {
