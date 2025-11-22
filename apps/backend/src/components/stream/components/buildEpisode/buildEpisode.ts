@@ -91,9 +91,15 @@ export const buildEpisode = async (
     resolveFirstAudioReady = resolve;
   });
 
-  // Handler for when first narration audio is ready - start ambient audio then
+  // Handler for when first narration audio is ready - unmute master gain and start ambient audio
   const onFirstAudioReady = () => {
-    console.log('[buildEpisode] First narration audio ready, starting ambient audio...');
+    console.log('[buildEpisode] First narration audio ready, unmuting master gain and starting ambient audio...');
+    
+    // Unmute the master gain so audio starts streaming
+    const currentTime = audioEngine.context.currentTime;
+    audioEngine.masterGain.gain.setValueAtTime(1, currentTime);
+    console.log('[buildEpisode] Master gain unmuted at', currentTime);
+    
     // Start ambient audio now that first narration audio is ready
     getAmbientAudio(
       config,
