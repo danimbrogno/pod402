@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router';
+import { sdk } from '@farcaster/miniapp-sdk';
 import { Root } from './routes/root';
 import { Home } from './routes/home';
 import { About } from './routes/about';
@@ -23,8 +24,18 @@ const router = createBrowserRouter([
   },
 ]);
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>
-);
+// Initialize the app
+async function init() {
+  const root = createRoot(document.getElementById('root')!);
+  
+  root.render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>
+  );
+
+  // Hide the splash screen once the app is ready
+  await sdk.actions.ready();
+}
+
+init();

@@ -13,11 +13,23 @@ export default defineConfig(() => ({
   },
   server: {
     host: 'localhost',
-    port: 4200
+    port: 4200,
+    headers: {
+      // Allow the app to be embedded in frames (required for Farcaster Mini Apps)
+      'Content-Security-Policy': "frame-ancestors *;",
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin'
+    }
   },
   preview: {
     host: 'localhost',
-    port: 4300
+    port: 4300,
+    headers: {
+      // Allow the app to be embedded in frames (required for Farcaster Mini Apps)
+      'Content-Security-Policy': "frame-ancestors *;",
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin'
+    }
   },
   build: {
     outDir: '../../dist/apps/main'
