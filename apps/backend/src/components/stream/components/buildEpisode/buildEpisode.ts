@@ -19,8 +19,13 @@ export const buildEpisode = async (
 
   // Initialize the audio engine
   const audioEngine = getAudioContext(config);
+  console.log(
+    `[buildEpisode] Audio context created, initial state: ${audioEngine.context.state}`
+  );
   await audioEngine.context.resume();
-  console.log('[buildEpisode] Audio context resumed');
+  console.log(
+    `[buildEpisode] Audio context resumed, state: ${audioEngine.context.state}, currentTime: ${audioEngine.context.currentTime}`
+  );
 
   // Transcode the audio to mp3
   const transcoder = transcode(config, audioEngine.context);

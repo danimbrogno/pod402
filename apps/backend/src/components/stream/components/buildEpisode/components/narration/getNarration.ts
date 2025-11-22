@@ -124,26 +124,42 @@ export const getNarration = async (
         console.log(
           `[getNarration] Starting getPhraseAudio for sentence ${sentenceIndex} with voice: ${voice}`
         );
+        console.log(
+          `[getNarration] Audio context state before getPhraseAudio: ${context.state}, currentTime: ${context.currentTime}`
+        );
+
         // Wait for the previous phrase's audio to finish before starting the next one
-        for await (const _ of getPhraseAudio(
-          config,
-          openai,
-          context,
-          destination,
-          sentence,
-          voice
-        )) {
-          console.log(
-            `[getNarration] getPhraseAudio yielded for sentence ${sentenceIndex}`
-          );
-          // Generator yields when audio playback completes
-          if (isAborted) {
+        try {
+          for await (const _ of getPhraseAudio(
+            config,
+            openai,
+            context,
+            destination,
+            sentence,
+            voice
+          )) {
             console.log(
-              `[getNarration] Aborted during sentence ${sentenceIndex} audio playback`
+              `[getNarration] getPhraseAudio yielded for sentence ${sentenceIndex}`
             );
-            break;
+            // Generator yields when audio playback completes
+            if (isAborted) {
+              console.log(
+                `[getNarration] Aborted during sentence ${sentenceIndex} audio playback`
+              );
+              break;
+            }
           }
+        } catch (error) {
+          console.error(
+            `[getNarration] Error in getPhraseAudio for sentence ${sentenceIndex}:`,
+            error
+          );
+          throw error;
         }
+
+        console.log(
+          `[getNarration] Audio context state after getPhraseAudio: ${context.state}, currentTime: ${context.currentTime}`
+        );
 
         if (isFirstSentence) {
           isFirstSentence = false;
