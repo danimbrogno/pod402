@@ -27,8 +27,6 @@ const config = getConfig({
 function createServer() {
   const app = express();
 
-  const environment = process.env.ENVIRONMENT || 'development';
-
   // Enable CORS
   app.use(cors());
 
@@ -76,13 +74,15 @@ function createServer() {
         },
       },
       config.environment === 'production' ? config.facilitator : undefined
-      // TODO: implement facilitator for production
     )
   );
 
   // Stream audio endpoint
-  app.get('/stream', streamHandler(config));
-  app.get('/demo', streamHandler(config));
+  app.get(
+    '/stream',
+    streamHandler(config, config.environment === 'production' ? 200 : 30)
+  );
+  app.get('/demo', streamHandler(config, 30));
 
   // tRPC endpoint
   app.use(

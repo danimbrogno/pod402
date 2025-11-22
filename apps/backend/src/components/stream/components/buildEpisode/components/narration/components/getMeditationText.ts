@@ -4,13 +4,25 @@ import { Config } from '../../../../../../../interface';
 export async function* getMeditationText(
   config: Config,
   openai: OpenAI,
-  prompt: string
+  {
+    prompt = 'Give me a meditation about gratitude',
+    length = 20,
+  }: {
+    prompt?: string;
+    length?: number;
+  }
 ): AsyncGenerator<string, void, unknown> {
+  console.log('[getMeditationText] Function called');
   console.log('[getMeditationText] Starting meditation text generation');
-  console.log(
-    '[getMeditationText] Prompt:',
-    prompt.substring(0, 100) + (prompt.length > 100 ? '...' : '')
-  );
+  console.log('[getMeditationText] Parameters:', {
+    prompt:
+      prompt.substring(0, 150) + (prompt.length > 150 ? ' and so on...' : ''),
+    length,
+    hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+  });
+
+  prompt =
+    prompt.substring(0, 150) + (prompt.length > 150 ? ' and so on...' : '');
 
   const stream = await openai.chat.completions.create({
     model: 'gpt-5-nano',
@@ -18,7 +30,7 @@ export async function* getMeditationText(
       { role: 'user', content: prompt },
       {
         role: 'system',
-        content: config.openai.textInstruction,
+        content: config.openai.textInstruction(length),
       },
     ],
     stream: true,

@@ -49,12 +49,12 @@ export function getConfig({
     openai: {
       speechInstruction:
         'Speak like a meditation coach. Calm, soothing, slow and softly.',
-      textInstruction: `You are a world renowned meditation coach at the start of a session with a client.
-      You are going to guide them through a meditation that will last about ${
-        environment === 'development' ? 30 : 200
-      } words.
+      textInstruction: (
+        length: number
+      ) => `You are a world renowned meditation coach at the start of a session with a client.
+      You are going to guide them through a meditation that will last about ${length} words.
       You should jump straight into the meditation without any introduction.
-      At the end let thank your client.
+      End the meditation with some expression of thanks for taking the time to meditate.
       `,
     },
     errorMessage:

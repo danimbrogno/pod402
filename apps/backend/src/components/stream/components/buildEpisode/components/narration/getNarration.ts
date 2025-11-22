@@ -17,12 +17,21 @@ export const getNarration = async (
   context: AudioContext,
   destination: AudioNode,
   narrationOptions: {
-    prompt: string;
+    prompt?: string;
     voice?: string;
+    length?: number;
   },
   onComplete?: () => Promise<void>
 ): Promise<() => void> => {
-  const { prompt, voice: voiceOverride } = narrationOptions;
+  const { prompt, voice: voiceOverride, length } = narrationOptions;
+
+  console.log('[getNarration] Called with options:', {
+    prompt:
+      prompt?.substring(0, 100) + (prompt && prompt.length > 100 ? '...' : ''),
+    voice: voiceOverride || 'random',
+    length: length || 'default',
+    hasOnComplete: !!onComplete,
+  });
 
   // Use provided voice or pick a random voice for this meditation session
   const voice =
@@ -49,16 +58,37 @@ export const getNarration = async (
   // Process sentences sequentially without blocking the caller
   // Each sentence will play its audio, and the next will start when the previous finishes
   const narrationPromise = (async () => {
+    console.log('[getNarration] Async narration promise started');
     try {
       const { delayAfterNarrationSentence, delayBeforeFirstNarration } =
         config.timing;
+      console.log('[getNarration] Timing config:', {
+        delayAfterNarrationSentence,
+        delayBeforeFirstNarration,
+      });
 
       let sentenceIndex = 0;
       let isFirstSentence = true;
 
+      console.log('[getNarration] Starting getMeditationText with:', {
+        prompt:
+          prompt?.substring(0, 100) +
+          (prompt && prompt.length > 100 ? '...' : ''),
+        length: length || 'default',
+      });
+
       // Start generating text immediately - don't wait for delay
       // The delay will be applied after the first sentence's audio is generated
-      for await (const sentence of getMeditationText(config, openai, prompt)) {
+      for await (const sentence of getMeditationText(config, openai, {
+        prompt,
+        length,
+      })) {
+        console.log(
+          `[getNarration] Received sentence ${
+            sentenceIndex + 1
+          } from generator:`,
+          sentence.substring(0, 100) + (sentence.length > 100 ? '...' : '')
+        );
         if (isAborted) {
           console.log(
             `[getNarration] Aborted during sentence ${
@@ -91,6 +121,9 @@ export const getNarration = async (
           break;
         }
 
+        console.log(
+          `[getNarration] Starting getPhraseAudio for sentence ${sentenceIndex} with voice: ${voice}`
+        );
         // Wait for the previous phrase's audio to finish before starting the next one
         for await (const _ of getPhraseAudio(
           config,
@@ -100,6 +133,9 @@ export const getNarration = async (
           sentence,
           voice
         )) {
+          console.log(
+            `[getNarration] getPhraseAudio yielded for sentence ${sentenceIndex}`
+          );
           // Generator yields when audio playback completes
           if (isAborted) {
             console.log(
@@ -140,6 +176,14 @@ export const getNarration = async (
         console.error(
           '[getNarration] Error during narration generation:',
           error
+        );
+        console.error(
+          '[getNarration] Error stack:',
+          error instanceof Error ? error.stack : 'No stack trace'
+        );
+      } else {
+        console.log(
+          '[getNarration] Error occurred but narration was aborted, ignoring'
         );
       }
     }

@@ -50,7 +50,7 @@ export type Config = {
   };
   openai: {
     speechInstruction: string;
-    textInstruction: string;
+    textInstruction: (length: number) => string;
   };
   errorMessage: string;
 };

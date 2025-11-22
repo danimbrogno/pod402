@@ -7,6 +7,7 @@ import { fadeOutAndEnd } from './components/fadeOutAndEnd';
 
 export const buildEpisode = async (
   config: Config,
+  length: number,
   onComplete?: () => void,
   options?: {
     prompt?: string;
@@ -90,17 +91,26 @@ export const buildEpisode = async (
   };
 
   // Start narration generation
+  console.log('[buildEpisode] Calling getNarration with:', {
+    prompt: options?.prompt || 'default',
+    voice: options?.voice || 'random',
+    length,
+    hasOnComplete: !!onNarrationComplete,
+  });
   await getNarration(
     config,
     audioEngine.context,
     audioEngine.destination,
     {
-      prompt: options?.prompt || 'Give me a meditation about gratitude',
+      prompt: options?.prompt,
       voice: options?.voice,
+      length,
     },
     onNarrationComplete
   );
-  console.log('[buildEpisode] Narration generation started');
+  console.log(
+    '[buildEpisode] getNarration returned (narration started in background)'
+  );
 
   return {
     transcoder,

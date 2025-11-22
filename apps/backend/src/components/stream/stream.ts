@@ -3,7 +3,7 @@ import { buildEpisode } from './components/buildEpisode/buildEpisode';
 import { Config } from '../../interface';
 
 export const streamHandler =
-  (config: Config): RequestHandler =>
+  (config: Config, length: number): RequestHandler =>
   async (request, response) => {
     const requestId = `${Date.now()}-${Math.random()
       .toString(36)
@@ -37,7 +37,14 @@ export const streamHandler =
         }
       };
 
-      const episode = await buildEpisode(config, onMeditationComplete, {
+      console.log(`[streamHandler] Request ${requestId} - Query params:`, {
+        prompt: request.query.prompt,
+        voice: request.query.voice,
+        ambience: request.query.ambience,
+        length,
+      });
+
+      const episode = await buildEpisode(config, length, onMeditationComplete, {
         prompt: request.query.prompt as string | undefined,
         voice: request.query.voice as string | undefined,
         ambience: request.query.ambience as string | undefined,
