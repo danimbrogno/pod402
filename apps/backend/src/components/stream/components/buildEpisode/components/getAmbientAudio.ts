@@ -2,10 +2,7 @@ import { existsSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { join } from 'path';
 import { Config } from '../../../../../interface';
-import {
-  getCachedAmbientAudio,
-  isCached,
-} from './ambientAudioCache';
+import { getCachedAmbientAudio, isCached } from './ambientAudioCache';
 import { getAssetsDir } from '../../../../../utils/getAssetsDir';
 
 // Resolve assets directory using utility function
@@ -40,7 +37,7 @@ export const getAmbientAudio = async (
       console.log(
         `[getAmbientAudio] Cache miss for ${fileName}, loading from disk...`
       );
-      const filePath = join(ASSETS_DIR, fileName);
+      const filePath = join(ASSETS_DIR, 'backgrounds', fileName);
 
       // Check if file exists
       if (!existsSync(filePath)) {
@@ -68,9 +65,7 @@ export const getAmbientAudio = async (
     const decodeStartTime = Date.now();
     const audioBuffer = await context.decodeAudioData(arrayBuffer);
     const decodeTime = Date.now() - decodeStartTime;
-    console.log(
-      `[getAmbientAudio] Decoded ${fileName} in ${decodeTime}ms`
-    );
+    console.log(`[getAmbientAudio] Decoded ${fileName} in ${decodeTime}ms`);
 
     // Create and configure the buffer source
     const source = context.createBufferSource();
