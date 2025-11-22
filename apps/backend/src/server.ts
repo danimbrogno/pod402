@@ -73,14 +73,14 @@ function createServer() {
           },
         },
       },
-      config.environment === 'production' ? config.facilitator : undefined
-    )
+      config.environment === 'production' ? config.facilitator : undefined,
+    ),
   );
 
   // Stream audio endpoint
   app.get(
     '/stream',
-    streamHandler(config, config.environment === 'production' ? 200 : 30)
+    streamHandler(config, config.environment === 'production' ? 200 : 30),
   );
   app.get('/demo', streamHandler(config, 30));
 
@@ -90,7 +90,7 @@ function createServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
-    })
+    }),
   );
 
   return app;
@@ -149,6 +149,7 @@ async function start() {
     console.log(`🚀 Backend server running on http://localhost:${PORT}`);
     console.log(`📡 tRPC endpoint: http://localhost:${PORT}/api`);
     console.log(`🎵 Stream endpoint: http://localhost:${PORT}/stream`);
+    console.log(`🎵 Demo endpoint: http://localhost:${PORT}/demo`);
     console.log('LFG!');
   });
 
@@ -158,7 +159,7 @@ async function start() {
   server.on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
       console.error(
-        `❌ Port ${PORT} is already in use. Please stop the other server.`
+        `❌ Port ${PORT} is already in use. Please stop the other server.`,
       );
       process.exit(1);
     } else {
