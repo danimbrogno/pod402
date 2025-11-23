@@ -9,7 +9,7 @@
       "upgradePackages": "true"
     },
     "ghcr.io/devcontainers/features/node:1": {
-      "version": "20.13.1"
+      "version": "20.18.0"
     },
     "ghcr.io/devcontainers/features/git:1": {
       "version": "latest",

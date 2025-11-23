@@ -1,7 +1,7 @@
 # Multi-stage build for backend application
 
 # Stage 1: Build stage
-FROM node:20.13.1-alpine AS builder
+FROM node:20.18.0-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache python3 make g++
@@ -33,10 +33,10 @@ WORKDIR /app/apps/backend
 RUN npm run build
 
 # Stage 2: Production stage
-FROM node:20.13.1-alpine AS production
+FROM node:20.18.0-alpine AS production
 
-# Install ffmpeg and ffprobe (required for audio processing)
-RUN apk add --no-cache ffmpeg
+# Install ffmpeg and ffprobe (required for audio processing) and wget (for healthcheck)
+RUN apk add --no-cache ffmpeg wget
 
 # Create app directory
 WORKDIR /app
@@ -75,9 +75,9 @@ EXPOSE 3000
 # Set working directory to backend
 WORKDIR /app/apps/backend
 
-# Health check
+# Health check (using curl for simplicity with ES modules)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
 # Start the application
 CMD ["node", "dist/server.js"]

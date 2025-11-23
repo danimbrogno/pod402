@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => {
       host: 'localhost',
     },
     ssr: {
-      noExternal: ['@farcaster/miniapp-sdk'],
+      // noExternal: ['@farcaster/miniapp-sdk'],
       external: ['eruda'], // Exclude from client bundle
       target: 'node',
     },
