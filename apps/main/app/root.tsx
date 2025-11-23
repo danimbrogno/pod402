@@ -5,9 +5,11 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from 'react-router';
 
 import type { Route } from './+types/root';
+import { ConfigProvider } from '~/contexts/ConfigContext';
 import './app.css';
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -34,6 +36,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       `${origin}/splash.png`,
     ),
     splashBackgroundColor: getEnvVar('FARCASTER_SPLASH_BG_COLOR', '#ffffff'),
+    streamEndpoint: getEnvVar(
+      'STREAM_ENDPOINT',
+      'https://pod402.3vl.ca/stream',
+    ),
+    demoEndpoint: getEnvVar('DEMO_ENDPOINT', 'https://pod402.3vl.ca/demo'),
   };
 }
 
@@ -100,7 +107,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const data = useLoaderData<typeof loader>();
+
+  const config = {
+    streamEndpoint: data.streamEndpoint,
+    demoEndpoint: data.demoEndpoint,
+  };
+
+  return (
+    <ConfigProvider config={config}>
+      <Outlet />
+    </ConfigProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

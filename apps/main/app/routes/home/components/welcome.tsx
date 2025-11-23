@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useX402 } from '~/utils/useX402';
+import { useConfig } from '~/contexts/ConfigContext';
+import { useAudioPlayer } from '~/hooks/useAudioPlayer';
 
 type VoiceOption = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
 
@@ -12,138 +14,40 @@ const VOICE_OPTIONS: VoiceOption[] = [
   'shimmer',
 ];
 
-// Backend URL - can be configured via environment variable
-const BACKEND_URL = 'https://pod402.3vl.ca';
-
 export function Welcome() {
   const [prompt, setPrompt] = useState('Give me a meditation about gratitude');
   const [voice, setVoice] = useState<VoiceOption>('nova');
   const [ambience, setAmbience] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const { fetchWithPayment, isReady } = useX402();
-
-  // Cleanup audio context on unmount
-  useEffect(() => {
-    return () => {
-      if (audioSourceRef.current) {
-        try {
-          audioSourceRef.current.stop();
-        } catch (e) {
-          // Source may already be stopped
-        }
-        audioSourceRef.current = null;
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close().catch(console.error);
-        audioContextRef.current = null;
-      }
-    };
-  }, []);
+  const { streamEndpoint, demoEndpoint } = useConfig();
+  const { play, stop, isPlaying, isLoading, error } = useAudioPlayer();
 
   const handleGenerateMeditation = async () => {
     if (!fetchWithPayment || !isReady) {
-      setError('Please connect your wallet first');
       return;
     }
 
-    // Stop any currently playing audio
-    if (audioSourceRef.current) {
-      try {
-        audioSourceRef.current.stop();
-      } catch (e) {
-        // Source may already be stopped
-      }
-      audioSourceRef.current = null;
-    }
+    // Build query parameters
+    const params = new URLSearchParams({
+      prompt: prompt || 'Give me a meditation about gratitude',
+      voice: voice,
+      ambience: ambience.toString(),
+    });
 
-    setIsLoading(true);
-    setError(null);
-    setIsPlaying(false);
+    const streamUrl = `${streamEndpoint}?${params.toString()}`;
 
-    try {
-      // Build query parameters
-      const params = new URLSearchParams({
-        prompt: prompt || 'Give me a meditation about gratitude',
-        voice: voice,
-        ambience: ambience.toString(),
-      });
-
-      const streamUrl = `${BACKEND_URL}/stream?${params.toString()}`;
-
-      // Make x402 payment-enabled request
-      const response = await fetchWithPayment(streamUrl, {
-        method: 'GET',
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Request failed: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      // Get audio data as ArrayBuffer
-      const arrayBuffer = await response.arrayBuffer();
-
-      // Create or reuse AudioContext
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext();
-      }
-      const audioContext = audioContextRef.current;
-
-      // Resume context if suspended (required for user interaction)
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-
-      // Decode audio data
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-      // Create buffer source
-      const source = audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.loop = false;
-
-      // Connect to destination and start playback
-      source.connect(audioContext.destination);
-      source.start(0);
-
-      // Store reference for cleanup
-      audioSourceRef.current = source;
-
-      // Update playing state
-      setIsPlaying(true);
-
-      // Handle playback end
-      source.onended = () => {
-        setIsPlaying(false);
-        audioSourceRef.current = null;
-      };
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to generate meditation',
-      );
-      console.error('Error generating meditation:', err);
-      setIsPlaying(false);
-    } finally {
-      setIsLoading(false);
-    }
+    // Use the audio player hook to play the stream
+    // Cast fetchWithPayment to match the expected type
+    await play(streamUrl, fetchWithPayment as typeof fetch);
   };
 
   const handleStopPlayback = () => {
-    if (audioSourceRef.current) {
-      try {
-        audioSourceRef.current.stop();
-      } catch (e) {
-        // Source may already be stopped
-      }
-      audioSourceRef.current = null;
-      setIsPlaying(false);
-    }
+    stop();
+  };
+
+  const handlePlayDemo = async () => {
+    // Demo doesn't require wallet connection, use regular fetch
+    await play(demoEndpoint);
   };
 
   return (
@@ -245,8 +149,16 @@ export function Welcome() {
             </div>
           </div>
 
-          {/* Generate Button */}
-          <div className="pt-4 border-t border-gray-200">
+          {/* Demo and Generate Buttons */}
+          <div className="pt-4 border-t border-gray-200 space-y-3">
+            <button
+              onClick={handlePlayDemo}
+              disabled={isLoading}
+              className="w-full px-4 py-3 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? 'Loading Demo...' : 'Play Demo'}
+            </button>
+
             <button
               onClick={handleGenerateMeditation}
               disabled={!isReady || isLoading}
