@@ -5,8 +5,8 @@ services:
     build:
       context: ../..
       dockerfile: apps/backend/Dockerfile
-    image: threevl/pod420-audio:latest
-    container_name: pod420-audio-backend
+    image: threevl/zenden-backend:latest
+    container_name: zenden-backend-backend
     ports:
       - "${PORT:-3000}:3000"
     environment:

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  main:
+    build:
+      context: ../..
+      dockerfile: apps/main/Dockerfile
+    image: threevl/zenden-main:latest
+    container_name: zenden-main
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-3000}
+      # Farcaster configuration
+      - FARCASTER_APP_NAME=${FARCASTER_APP_NAME:-Zen Den}
+      - FARCASTER_ICON_URL=${FARCASTER_ICON_URL:-}
+      - FARCASTER_HOME_URL=${FARCASTER_HOME_URL:-}
+      - FARCASTER_SPLASH_IMAGE_URL=${FARCASTER_SPLASH_IMAGE_URL:-}
+      - FARCASTER_SPLASH_BG_COLOR=${FARCASTER_SPLASH_BG_COLOR:-#ffffff}
+      # API endpoints
+      - STREAM_ENDPOINT=${STREAM_ENDPOINT:-https://pod402.3vl.ca/stream}
+      - DEMO_ENDPOINT=${DEMO_ENDPOINT:-https://pod402.3vl.ca/demo}
+    restart: unless-stopped
+    # Optional: Add healthcheck if you add a /health route
+    # healthcheck:
+    #   test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+    #   interval: 30s
+    #   timeout: 3s
+    #   retries: 3
+    #   start_period: 5s
+

@@ -1,22 +1,68 @@
-FROM node:20-alpine AS development-dependencies-env
-COPY . /app
+# Multi-stage build for main application
+
+# Stage 1: Build stage
+FROM node:20.13.1-alpine AS builder
+
+# Set working directory
 WORKDIR /app
+
+# Copy root package files
+COPY package*.json ./
+COPY tsconfig.base.json ./
+COPY turbo.json ./
+
+# Copy library package files and source
+COPY library/ ./library/
+
+# Copy main app package file and config
+COPY apps/main/package.json ./apps/main/
+COPY apps/main/tsconfig.json ./apps/main/
+COPY apps/main/vite.config.ts ./apps/main/
+COPY apps/main/react-router.config.ts ./apps/main/
+
+# Install dependencies
 RUN npm ci
 
-FROM node:20-alpine AS production-dependencies-env
-COPY ./package.json package-lock.json /app/
-WORKDIR /app
-RUN npm ci --omit=dev
+# Copy main app source code
+COPY apps/main/app ./apps/main/app/
+COPY apps/main/public ./apps/main/public/
 
-FROM node:20-alpine AS build-env
-COPY . /app/
-COPY --from=development-dependencies-env /app/node_modules /app/node_modules
-WORKDIR /app
+# Build the main application
+WORKDIR /app/apps/main
 RUN npm run build
 
-FROM node:20-alpine
-COPY ./package.json package-lock.json /app/
-COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-COPY --from=build-env /app/build /app/build
+# Stage 2: Production stage
+FROM node:20.13.1-alpine AS production
+
+# Create app directory
 WORKDIR /app
+
+# Copy root package files
+COPY package*.json ./
+COPY tsconfig.base.json ./
+COPY turbo.json ./
+
+# Copy library package files (needed for workspace resolution)
+COPY library/ ./library/
+
+# Copy main app package file
+COPY apps/main/package.json ./apps/main/
+
+# Install only production dependencies
+RUN npm ci --omit=dev
+
+# Copy built application from builder stage
+COPY --from=builder /app/apps/main/build ./apps/main/build
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Expose port
+EXPOSE 3000
+
+# Set working directory to main app
+WORKDIR /app/apps/main
+
+# Start the application
 CMD ["npm", "run", "start"]
