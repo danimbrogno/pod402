@@ -69,7 +69,22 @@ function createServer() {
                 },
               },
             },
-            outputSchema: null,
+            outputSchema: {
+              type: 'object',
+              properties: {
+                uuid: {
+                  type: 'string',
+                  format: 'uuid',
+                  description: 'Unique identifier for the generated meditation',
+                },
+                url: {
+                  type: 'string',
+                  format: 'uri',
+                  description: 'URL to access the generated meditation audio file',
+                },
+              },
+              required: ['uuid', 'url'],
+            },
           },
         },
       },
