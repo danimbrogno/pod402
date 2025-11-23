@@ -25,6 +25,7 @@ on:
       - 'package-lock.json'
       - 'turbo.json'
       - 'tsconfig.base.json'
+  workflow_dispatch:
 
 env:
   GHCR_REGISTRY: ghcr.io
