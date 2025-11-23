@@ -1,0 +1,126 @@
+services:
+  traefik:
+    image: traefik:v3.6.1  # or traefik:latest (which should be >= 3.6.1)
+    container_name: pod420-audio-traefik
+    command:
+      #- --log.level=DEBUG  # Add this for debug logs
+      #- --accesslog=true    # Add this for access logs
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.cloudflare.acme.email=${CLOUDFLARE_EMAIL:-}
+      - --certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.cloudflare.acme.dnschallenge=true
+      - --certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    environment:
+      - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    restart: unless-stopped
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`zenden.3vl.ca`) && PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=dashboard-stripprefix"
+      - "traefik.http.middlewares.dashboard-stripprefix.stripprefix.prefixes=/dashboard"
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    image: threevl/zenden-backend:latest
+    container_name: pod420-audio-backend
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - ASSETS_PATH=${ASSETS_PATH:-/app/assets}
+      - PORT=3000
+      - FFMPEG_PATH=${FFMPEG_PATH:-/usr/bin/ffmpeg}
+      - FFPROBE_PATH=${FFPROBE_PATH:-/usr/bin/ffprobe}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - RECEIVING_WALLET=${RECEIVING_WALLET:-}
+      - RECEIVING_WALLET_ADDRESS=${RECEIVING_WALLET_ADDRESS:-${RECEIVING_WALLET:-}}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - ./assets:/app/assets
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      - "traefik.http.routers.backend-http.rule=Host(`${DOMAIN:-localhost}`) && (PathPrefix(`/api`) || PathPrefix(`/stream`) || PathPrefix(`/demo`))"
+      - "traefik.http.routers.backend-http.entrypoints=web"
+      - "traefik.http.routers.backend-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.backend.rule=Host(`${DOMAIN:-localhost}`) && (PathPrefix(`/api`) || PathPrefix(`/stream`) || PathPrefix(`/demo`))"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=cloudflare"
+      - "traefik.http.routers.backend.priority=10"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+  main:
+    build:
+      context: .
+      dockerfile: apps/main/Dockerfile
+    image: threevl/zenden-main:latest
+    container_name: pod420-audio-main
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      # Farcaster configuration
+      - FARCASTER_APP_NAME=${FARCASTER_APP_NAME:-Zen Den}
+      - FARCASTER_ICON_URL=${FARCASTER_ICON_URL:-}
+      - FARCASTER_HOME_URL=${FARCASTER_HOME_URL:-}
+      - FARCASTER_SPLASH_IMAGE_URL=${FARCASTER_SPLASH_IMAGE_URL:-}
+      - FARCASTER_SPLASH_BG_COLOR=${FARCASTER_SPLASH_BG_COLOR:-#ffffff}
+      # API endpoints - use DOMAIN env var or default to localhost
+      - STREAM_ENDPOINT=${STREAM_ENDPOINT:-https://${DOMAIN:-localhost}/stream}
+      - DEMO_ENDPOINT=${DEMO_ENDPOINT:-https://${DOMAIN:-localhost}/demo}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      # Main app routes - catch all except /api, /stream, /demo, /dashboard
+      - "traefik.http.middlewares.main-stripprefix.stripprefix.prefixes=/api,/stream,/demo,/dashboard"
+      - "traefik.http.routers.main-http.rule=Host(`${DOMAIN:-localhost}`) && !PathPrefix(`/api`) && !PathPrefix(`/stream`) && !PathPrefix(`/demo`) && !PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.main-http.entrypoints=web"
+      - "traefik.http.routers.main-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.main.rule=Host(`${DOMAIN:-localhost}`) && !PathPrefix(`/api`) && !PathPrefix(`/stream`) && !PathPrefix(`/demo`) && !PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.main.entrypoints=websecure"
+      - "traefik.http.routers.main.tls.certresolver=cloudflare"
+      - "traefik.http.services.main.loadbalancer.server.port=3000"
+      # Priority: backend routes should be checked first
+      - "traefik.http.routers.main.priority=1"
+networks:
+  app-network:
+    driver: bridge
