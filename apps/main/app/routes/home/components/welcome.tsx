@@ -82,20 +82,17 @@ export function Welcome() {
 
   return (
     <div className="min-h-full py-6 px-4 pb-32">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-3">
         {/* Hero Section */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-stone-900">
+          <h1 className="text-xl font-bold text-stone-900">
             Create Your Meditation
           </h1>
-          <p className="text-stone-600">
-            Customize your meditation experience with AI-generated guidance
-          </p>
         </div>
 
         {/* Main Form Card */}
         <Card>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Prompt Text Input */}
             <Textarea
               id="prompt"

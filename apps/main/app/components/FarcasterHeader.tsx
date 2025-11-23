@@ -120,10 +120,10 @@ export function FarcasterHeader() {
     <div className="container mx-auto px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-700 to-teal-800 flex items-center justify-center">
             <span className="text-white text-sm font-bold">Z</span>
           </div>
-          <h1 className="text-lg font-semibold text-slate-900">Zen Den</h1>
+          <h1 className="text-lg font-semibold text-stone-900">Zen Den</h1>
         </div>
         <div className="flex items-center gap-3">
           {isConnected ? (
@@ -132,7 +132,7 @@ export function FarcasterHeader() {
             <button
               onClick={handleConnect}
               disabled={isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="px-4 py-2 text-sm font-medium text-white bg-teal-700 rounded-lg hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               {isPending ? 'Connecting...' : 'Connect Wallet'}
             </button>

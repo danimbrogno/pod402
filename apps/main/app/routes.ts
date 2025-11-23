@@ -8,5 +8,6 @@ import {
 export default [
   layout('routes/_layout.tsx', [index('routes/home/home.tsx')]),
   route('meditation', 'routes/meditation/meditation.tsx'),
+  route('health', 'routes/health.ts'),
   route('.well-known/farcaster.json', 'routes/.well-known/farcaster.json.ts'),
 ] satisfies RouteConfig;
