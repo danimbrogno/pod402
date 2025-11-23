@@ -40,6 +40,7 @@ Thumbs.db
 
 .turbo
 
+.env
 .env.local
 .env.*.local
 schema.tmp.gql
