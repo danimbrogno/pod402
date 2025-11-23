@@ -1,6 +1,8 @@
 import { RequestHandler } from 'express';
 import { buildEpisode } from './components/buildEpisode/buildEpisode';
 import { Config } from '../../interface';
+import { db, schema } from '../../utils/db';
+import { eq } from 'drizzle-orm';
 
 export const streamHandler =
   (config: Config, length: number): RequestHandler =>
@@ -44,15 +46,81 @@ export const streamHandler =
         length,
       });
 
+      // Get wallet address from x402 payment info
+      // x402-express adds payment metadata to the request
+      const walletAddress = (request as any).x402?.payer?.address || 
+                           (request as any).payment?.payer?.address ||
+                           (request as any).payer?.address;
+
+      const prompt = (request.query.prompt as string) || 'Give me a meditation about gratitude';
+      const voice = (request.query.voice as string) || 'nova';
+      const ambience = (request.query.ambience as string) || '1';
+
+      let meditationUuid: string | null = null;
+      let meditationUrl: string | null = null;
+
+      // Save meditation to database if wallet address is available
+      if (walletAddress) {
+        try {
+          // Find or create user by wallet address
+          const existingUsers = await db
+            .select()
+            .from(schema.users)
+            .where(eq(schema.users.address, walletAddress))
+            .limit(1);
+
+          let user = existingUsers[0] || null;
+
+          if (!user) {
+            const [newUser] = await db
+              .insert(schema.users)
+              .values({ address: walletAddress })
+              .returning();
+            user = newUser;
+          }
+
+          // Generate meditation URL (using stream endpoint with parameters)
+          const baseUrl = `${request.protocol}://${request.get('host')}`;
+          meditationUrl = `${baseUrl}/stream?prompt=${encodeURIComponent(prompt)}&voice=${encodeURIComponent(voice)}&ambience=${encodeURIComponent(ambience)}`;
+
+          // Create meditation record
+          const [meditation] = await db
+            .insert(schema.meditations)
+            .values({
+              prompt,
+              voice,
+              ambience,
+              url: meditationUrl,
+              userId: user.uuid,
+            })
+            .returning();
+
+          meditationUuid = meditation.uuid;
+          console.log(
+            `[streamHandler] Request ${requestId} - Meditation saved with UUID: ${meditationUuid}`
+          );
+        } catch (error) {
+          console.error(
+            `[streamHandler] Request ${requestId} - Error saving meditation:`,
+            error
+          );
+          // Continue with streaming even if database save fails
+        }
+      }
+
       const episode = await buildEpisode(config, length, onMeditationComplete, {
-        prompt: request.query.prompt as string | undefined,
-        voice: request.query.voice as string | undefined,
-        ambience: request.query.ambience as string | undefined,
+        prompt,
+        voice,
+        ambience,
       });
       episodeResources = episode;
       console.log(
         `[streamHandler] Request ${requestId} - Episode build completed`
       );
+
+      // Store meditation UUID and URL for response
+      (response as any).meditationUuid = meditationUuid;
+      (response as any).meditationUrl = meditationUrl;
 
       // Respond to the initial range request
       if (request.headers.range === 'bytes=0-1') {
@@ -60,12 +128,26 @@ export const streamHandler =
         response.set('Content-Type', 'audio/mp3');
         response.set('Keep-Alive', 'timeout=620, max=0');
         response.set('Accept-Ranges', 'none');
+        // Add meditation metadata headers
+        if (meditationUuid) {
+          response.set('X-Meditation-UUID', meditationUuid);
+        }
+        if (meditationUrl) {
+          response.set('X-Meditation-URL', meditationUrl);
+        }
         return response.sendStatus(200).end();
       }
       response.set('Content-Range', '*');
       response.set('Content-Type', 'audio/mp3');
       response.set('Keep-Alive', 'timeout=620, max=0');
       response.set('Accept-Ranges', 'none');
+      // Add meditation metadata headers
+      if (meditationUuid) {
+        response.set('X-Meditation-UUID', meditationUuid);
+      }
+      if (meditationUrl) {
+        response.set('X-Meditation-URL', meditationUrl);
+      }
 
       episode.transcoder
         .pipe(response, { end: true })

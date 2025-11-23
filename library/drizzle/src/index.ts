@@ -27,15 +27,37 @@ export const episodes = pgTable('episodes', {
 });
 
 /**
+ * Meditation table
+ */
+export const meditations = pgTable('meditations', {
+  uuid: uuid('uuid').primaryKey().defaultRandom(),
+  prompt: text('prompt').notNull(),
+  voice: text('voice').notNull(), // Voice used for narration (e.g., 'alloy', 'echo', 'nova')
+  ambience: text('ambience').notNull(), // Ambient track number (1-13)
+  url: text('url').notNull(), // URL to access the meditation audio file
+  userId: uuid('user_id').notNull().references(() => users.uuid, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+/**
  * Relations
  */
 export const usersRelations = relations(users, ({ many }) => ({
   episodes: many(episodes),
+  meditations: many(meditations),
 }));
 
 export const episodesRelations = relations(episodes, ({ one }) => ({
   user: one(users, {
     fields: [episodes.userId],
+    references: [users.uuid],
+  }),
+}));
+
+export const meditationsRelations = relations(meditations, ({ one }) => ({
+  user: one(users, {
+    fields: [meditations.userId],
     references: [users.uuid],
   }),
 }));
@@ -47,6 +69,8 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Episode = typeof episodes.$inferSelect;
 export type NewEpisode = typeof episodes.$inferInsert;
+export type Meditation = typeof meditations.$inferSelect;
+export type NewMeditation = typeof meditations.$inferInsert;
 
 /**
  * Database configuration
@@ -73,6 +97,8 @@ export function getDrizzleConfig(overrides: Partial<DatabaseConfig> = {}): Datab
 export const schema = {
   users,
   episodes,
+  meditations,
   usersRelations,
   episodesRelations,
+  meditationsRelations,
 };
