@@ -1,7 +1,21 @@
-import Stream, { PassThrough } from 'stream';
+import { PassThrough } from 'stream';
 import { getWavHeader } from './wav';
 import { StreamAudioContext, Config } from '../../../../../interface';
 import ffmpeg from 'fluent-ffmpeg';
+import { logger } from '../../../../../utils/logger';
+
+/**
+ * Check if an error is an expected disconnect (client closed connection)
+ */
+function isExpectedDisconnect(error: Error): boolean {
+  return (
+    error.message === 'Output stream closed' ||
+    error.message.includes('stream closed') ||
+    error.message.includes('EPIPE') ||
+    error.message.includes('ECONNRESET')
+  );
+}
+
 export const transcode = (config: Config, context: StreamAudioContext) => {
   const transformer = new PassThrough();
 
@@ -24,25 +38,22 @@ export const transcode = (config: Config, context: StreamAudioContext) => {
   return ffmpeg(wav)
     .setFfmpegPath(ffmpegPath)
     .setFfprobePath(ffprobePath)
-
     .toFormat('mp3')
-    .on('progress', function (progress) {
-      console.log({ progress }, `Render progress`);
+    .on('progress', (progress) => {
+      logger.debug(`Transcode progress`, {
+        component: 'transcode',
+        progress,
+      });
     })
     .on('error', (err: Error) => {
-      // "Output stream closed" is expected when client disconnects
-      const isExpectedDisconnect =
-        err.message === 'Output stream closed' ||
-        err.message.includes('stream closed') ||
-        err.message.includes('EPIPE') ||
-        err.message.includes('ECONNRESET');
-
-      if (isExpectedDisconnect) {
-        console.log(
-          '[transcode] Client disconnected, output stream closed (expected)'
-        );
+      if (isExpectedDisconnect(err)) {
+        logger.debug(`Client disconnected (expected)`, {
+          component: 'transcode',
+        });
       } else {
-        console.error('[transcode] Transcoder error:', err);
+        logger.error(`Transcoder error`, err, {
+          component: 'transcode',
+        });
       }
     });
 };

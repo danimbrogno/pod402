@@ -1,16 +1,99 @@
-import OpenAI from 'openai';
 import { Config } from '../../../../../../interface';
 import { getMeditationText } from './components/getMeditationText';
 import { getPhraseAudio } from './components/getPhraseAudio';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { logger } from '../../../../../../utils/logger';
+import { createOpenAIClient } from '../../../../../../utils/openaiClient';
+import { AbortManager } from '../../../../../../utils/abortManager';
 
 // Available OpenAI TTS voices
 const OPENAI_VOICES: Array<
   'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 > = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+
+/**
+ * Select voice from override or pick random
+ */
+function selectVoice(voiceOverride?: string): typeof OPENAI_VOICES[number] {
+  if (voiceOverride && OPENAI_VOICES.includes(voiceOverride as any)) {
+    return voiceOverride as typeof OPENAI_VOICES[number];
+  }
+  return OPENAI_VOICES[Math.floor(Math.random() * OPENAI_VOICES.length)];
+}
+
+/**
+ * Process narration using generators for clean async flow
+ */
+async function* processNarration(
+  config: Config,
+  openai: ReturnType<typeof createOpenAIClient>,
+  context: AudioContext,
+  destination: AudioNode,
+  options: {
+    prompt?: string;
+    voice: typeof OPENAI_VOICES[number];
+    length?: number;
+  },
+  abortManager: AbortManager
+): AsyncGenerator<void, void, unknown> {
+  const { delayAfterNarrationSentence, delayBeforeFirstNarration } =
+    config.timing;
+
+  let isFirstSentence = true;
+
+  // Generate and process sentences sequentially
+  for await (const sentence of getMeditationText(
+    config,
+    openai,
+    {
+      prompt: options.prompt,
+      length: options.length,
+    },
+    abortManager
+  )) {
+    abortManager.throwIfAborted();
+
+    // Apply delay before first narration
+    if (isFirstSentence && delayBeforeFirstNarration > 0) {
+      logger.debug(`Waiting before first narration`, {
+        component: 'getNarration',
+        delay: `${delayBeforeFirstNarration}s`,
+      });
+      await new Promise((resolve) =>
+        setTimeout(resolve, delayBeforeFirstNarration * 1000)
+      );
+      isFirstSentence = false;
+    }
+
+    abortManager.throwIfAborted();
+
+    // Generate and play audio for this sentence
+    // The generator yields when playback completes
+    for await (const _ of getPhraseAudio(
+      config,
+      openai,
+      context,
+      destination,
+      sentence,
+      options.voice,
+      abortManager
+    )) {
+      // Generator yields when audio playback completes
+      abortManager.throwIfAborted();
+    }
+
+    // Add delay after sentence (except for the last one)
+    if (delayAfterNarrationSentence > 0) {
+      abortManager.throwIfAborted();
+      logger.debug(`Waiting after sentence`, {
+        component: 'getNarration',
+        delay: `${delayAfterNarrationSentence}s`,
+      });
+      await new Promise((resolve) =>
+        setTimeout(resolve, delayAfterNarrationSentence * 1000)
+      );
+    }
+  }
+}
 
 export const getNarration = async (
   config: Config,
@@ -24,201 +107,65 @@ export const getNarration = async (
   onComplete?: () => Promise<void>
 ): Promise<() => void> => {
   const { prompt, voice: voiceOverride, length } = narrationOptions;
+  const voice = selectVoice(voiceOverride);
 
-  console.log('[getNarration] Called with options:', {
-    prompt:
-      prompt?.substring(0, 100) + (prompt && prompt.length > 100 ? '...' : ''),
-    voice: voiceOverride || 'random',
+  logger.info(`Starting narration generation`, {
+    component: 'getNarration',
+    promptPreview: prompt?.substring(0, 100) + (prompt && prompt.length > 100 ? '...' : ''),
+    voice,
+    voiceSource: voiceOverride ? 'query' : 'random',
     length: length || 'default',
-    hasOnComplete: !!onComplete,
   });
 
-  // Use provided voice or pick a random voice for this meditation session
-  const voice =
-    voiceOverride && OPENAI_VOICES.includes(voiceOverride as any)
-      ? (voiceOverride as
-          | 'alloy'
-          | 'echo'
-          | 'fable'
-          | 'onyx'
-          | 'nova'
-          | 'shimmer')
-      : OPENAI_VOICES[Math.floor(Math.random() * OPENAI_VOICES.length)];
-  console.log(
-    `[getNarration] Selected voice: ${voice}${
-      voiceOverride ? ' (from query)' : ' (random)'
-    }`
-  );
-  console.log('[getNarration] Starting narration generation (non-blocking)');
+  const openai = createOpenAIClient();
+  const abortManager = new AbortManager();
 
-  // Create an AbortController to allow cancellation
-  const abortController = new AbortController();
-  let isAborted = false;
-
-  // Process sentences sequentially without blocking the caller
-  // Each sentence will play its audio, and the next will start when the previous finishes
+  // Process narration in background
   const narrationPromise = (async () => {
-    console.log('[getNarration] Async narration promise started');
     try {
-      const { delayAfterNarrationSentence, delayBeforeFirstNarration } =
-        config.timing;
-      console.log('[getNarration] Timing config:', {
-        delayAfterNarrationSentence,
-        delayBeforeFirstNarration,
-      });
-
-      let sentenceIndex = 0;
-      let isFirstSentence = true;
-
-      console.log('[getNarration] Starting getMeditationText with:', {
-        prompt:
-          prompt?.substring(0, 100) +
-          (prompt && prompt.length > 100 ? '...' : ''),
-        length: length || 'default',
-      });
-
-      // Start generating text immediately - don't wait for delay
-      // The delay will be applied after the first sentence's audio is generated
-      for await (const sentence of getMeditationText(config, openai, {
-        prompt,
-        length,
-      })) {
-        console.log(
-          `[getNarration] Received sentence ${
-            sentenceIndex + 1
-          } from generator:`,
-          sentence.substring(0, 100) + (sentence.length > 100 ? '...' : '')
-        );
-        if (isAborted) {
-          console.log(
-            `[getNarration] Aborted during sentence ${
-              sentenceIndex + 1
-            } generation`
-          );
-          break;
-        }
-
-        sentenceIndex++;
-        console.log(
-          `[getNarration] Processing sentence ${sentenceIndex}, waiting for previous to finish...`
-        );
-
-        // Apply delay before first narration (if configured) - but only after we have the text
-        if (isFirstSentence && delayBeforeFirstNarration > 0 && !isAborted) {
-          console.log(
-            `[getNarration] Waiting ${delayBeforeFirstNarration}s before first narration playback...`
-          );
-          await new Promise((resolve) =>
-            setTimeout(resolve, delayBeforeFirstNarration * 1000)
-          );
-          isFirstSentence = false;
-        }
-
-        if (isAborted) {
-          console.log(
-            `[getNarration] Aborted during sentence ${sentenceIndex} processing`
-          );
-          break;
-        }
-
-        console.log(
-          `[getNarration] Starting getPhraseAudio for sentence ${sentenceIndex} with voice: ${voice}`
-        );
-        console.log(
-          `[getNarration] Audio context state before getPhraseAudio: ${context.state}, currentTime: ${context.currentTime}`
-        );
-
-        // Wait for the previous phrase's audio to finish before starting the next one
-        try {
-          for await (const _ of getPhraseAudio(
-            config,
-            openai,
-            context,
-            destination,
-            sentence,
-            voice
-          )) {
-            console.log(
-              `[getNarration] getPhraseAudio yielded for sentence ${sentenceIndex}`
-            );
-            // Generator yields when audio playback completes
-            if (isAborted) {
-              console.log(
-                `[getNarration] Aborted during sentence ${sentenceIndex} audio playback`
-              );
-              break;
-            }
-          }
-        } catch (error) {
-          console.error(
-            `[getNarration] Error in getPhraseAudio for sentence ${sentenceIndex}:`,
-            error
-          );
-          throw error;
-        }
-
-        console.log(
-          `[getNarration] Audio context state after getPhraseAudio: ${context.state}, currentTime: ${context.currentTime}`
-        );
-
-        if (isFirstSentence) {
-          isFirstSentence = false;
-        }
-
-        if (isAborted) break;
-
-        console.log(`[getNarration] Sentence ${sentenceIndex} audio completed`);
-
-        // Add delay after sentence (except for the last one, which will be handled by the stream ending)
-        if (delayAfterNarrationSentence > 0 && !isAborted) {
-          console.log(
-            `[getNarration] Waiting ${delayAfterNarrationSentence}s before next sentence...`
-          );
-          await new Promise((resolve) =>
-            setTimeout(resolve, delayAfterNarrationSentence * 1000)
-          );
-        }
+      // Process all sentences using the generator
+      for await (const _ of processNarration(
+        config,
+        openai,
+        context,
+        destination,
+        { prompt, voice, length },
+        abortManager
+      )) {
+        // Generator yields when each sentence completes
       }
-      if (!isAborted) {
-        console.log('[getNarration] All narration sentences completed');
 
-        // Call onComplete handler if provided
+      if (!abortManager.isAborted()) {
+        logger.info(`All narration sentences completed`, {
+          component: 'getNarration',
+        });
+
         if (onComplete) {
           await onComplete();
         }
       }
     } catch (error) {
-      if (!isAborted) {
-        console.error(
-          '[getNarration] Error during narration generation:',
-          error
-        );
-        console.error(
-          '[getNarration] Error stack:',
-          error instanceof Error ? error.stack : 'No stack trace'
-        );
-      } else {
-        console.log(
-          '[getNarration] Error occurred but narration was aborted, ignoring'
-        );
+      if (abortManager.isAborted()) {
+        logger.info(`Narration aborted`, {
+          component: 'getNarration',
+        });
+        return;
       }
+
+      logger.error(`Error during narration generation`, error, {
+        component: 'getNarration',
+      });
+      throw error;
     }
   })();
 
   // Return cleanup function
-  const cleanup = () => {
-    if (!isAborted) {
-      console.log('[getNarration] Terminating narration generation...');
-      isAborted = true;
-      abortController.abort();
-      console.log('[getNarration] Narration generation terminated');
+  return () => {
+    if (!abortManager.isAborted()) {
+      logger.info(`Terminating narration generation`, {
+        component: 'getNarration',
+      });
+      abortManager.abort();
     }
   };
-
-  // Return immediately without waiting for narration to complete
-  console.log(
-    '[getNarration] Narration generation started in background, returning immediately'
-  );
-
-  return cleanup;
 };

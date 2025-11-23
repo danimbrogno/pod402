@@ -4,6 +4,64 @@ import { getAudioContext } from './components/getAudioContext';
 import { transcode } from './components/transcode';
 import { getNarration } from './components/narration/getNarration';
 import { fadeOutAndEnd } from './components/fadeOutAndEnd';
+import { logger } from '../../../../utils/logger';
+import { TimeoutManager } from '../../../../utils/timeoutManager';
+import { AbortManager } from '../../../../utils/abortManager';
+
+/**
+ * Select ambient audio track number
+ */
+function selectAmbientTrack(ambienceOverride?: string): string {
+  if (ambienceOverride) {
+    const ambienceNum = parseInt(ambienceOverride, 10);
+    if (!isNaN(ambienceNum) && ambienceNum >= 1 && ambienceNum <= 13) {
+      return String(ambienceNum).padStart(3, '0');
+    }
+    logger.warn(`Invalid ambience value: ${ambienceOverride}, using random`, {
+      component: 'buildEpisode',
+    });
+  }
+  return String(Math.floor(Math.random() * 13) + 1).padStart(3, '0');
+}
+
+/**
+ * Cleanup transcoder and audio context
+ */
+function cleanupResources(
+  transcoder: ReturnType<typeof transcode>,
+  audioContext: AudioContext
+): void {
+  logger.info(`Cleaning up resources`, {
+    component: 'buildEpisode',
+  });
+
+  // Kill transcoder
+  if (transcoder) {
+    try {
+      if (typeof transcoder.kill === 'function') {
+        transcoder.kill('SIGTERM');
+      } else if (transcoder.ffmpegProc) {
+        transcoder.ffmpegProc.kill('SIGTERM');
+      }
+    } catch (error) {
+      // Ignore errors during cleanup
+      logger.debug(`Error killing transcoder (ignored)`, {
+        component: 'buildEpisode',
+      });
+    }
+  }
+
+  // Close audio context
+  if (audioContext.state !== 'closed') {
+    try {
+      audioContext.close();
+    } catch (error) {
+      logger.debug(`Error closing audio context (ignored)`, {
+        component: 'buildEpisode',
+      });
+    }
+  }
+}
 
 export const buildEpisode = async (
   config: Config,
@@ -15,79 +73,76 @@ export const buildEpisode = async (
     ambience?: string;
   }
 ) => {
-  console.log('[buildEpisode] Starting episode build');
+  logger.info(`Starting episode build`, {
+    component: 'buildEpisode',
+    length,
+    prompt: options?.prompt || 'default',
+    voice: options?.voice || 'random',
+  });
 
   // Initialize the audio engine
   const audioEngine = getAudioContext(config);
-  console.log(
-    `[buildEpisode] Audio context created, initial state: ${audioEngine.context.state}`
-  );
   await audioEngine.context.resume();
-  console.log(
-    `[buildEpisode] Audio context resumed, state: ${audioEngine.context.state}, currentTime: ${audioEngine.context.currentTime}`
-  );
+  logger.debug(`Audio context initialized`, {
+    component: 'buildEpisode',
+    state: audioEngine.context.state,
+  });
 
   // Transcode the audio to mp3
   const transcoder = transcode(config, audioEngine.context);
-  console.log('[buildEpisode] Transcoder created');
 
-  // Use provided ambience or pick a random ambient audio file (001-013)
-  let ambientNum: string;
-  if (options?.ambience) {
-    const ambienceNum = parseInt(options.ambience, 10);
-    // Validate ambience is between 1-13
-    if (isNaN(ambienceNum) || ambienceNum < 1 || ambienceNum > 13) {
-      console.warn(
-        `[buildEpisode] Invalid ambience value: ${options.ambience}, using random instead`
-      );
-      ambientNum = String(Math.floor(Math.random() * 13) + 1).padStart(3, '0');
-    } else {
-      ambientNum = String(ambienceNum).padStart(3, '0');
-    }
-  } else {
-    ambientNum = String(Math.floor(Math.random() * 13) + 1).padStart(3, '0');
-  }
-  console.log(
-    `[buildEpisode] Selected ambient audio: ${ambientNum}${
-      options?.ambience ? ' (from query)' : ' (random)'
-    }`
-  );
+  // Select ambient track
+  const ambientNum = selectAmbientTrack(options?.ambience);
+  logger.info(`Selected ambient audio track`, {
+    component: 'buildEpisode',
+    track: ambientNum,
+    source: options?.ambience ? 'query' : 'random',
+  });
 
   // Load ambient audio
-  console.log('[buildEpisode] Loading ambient audio...');
   await getAmbientAudio(
     config,
     audioEngine.context,
     audioEngine.destination,
     ambientNum
   );
-  console.log('[buildEpisode] Ambient audio started');
 
-  // Cleanup function for transcoder and audio context
+  // Create abort manager for cleanup
+  const abortManager = new AbortManager();
+
+  // Create timeout manager for hard stop failsafe
+  const timeoutManager = new TimeoutManager(config.timing.maxLength, () => {
+    logger.warn(`Hard stop triggered: max duration exceeded`, {
+      component: 'buildEpisode',
+      maxDuration: config.timing.maxLength,
+    });
+    abortManager.abort();
+    cleanupResources(transcoder, audioEngine.context);
+    onComplete?.();
+  });
+  timeoutManager.start();
+
+  // Cleanup function
   const cleanup = () => {
-    console.log('[buildEpisode] Cleanup requested');
-    if (transcoder) {
-      try {
-        if (typeof transcoder.kill === 'function') {
-          transcoder.kill('SIGTERM');
-        } else if (transcoder.ffmpegProc) {
-          transcoder.ffmpegProc.kill('SIGTERM');
-        }
-      } catch (error) {
-        // Ignore errors during cleanup
-      }
-    }
-    if (audioEngine.context.state !== 'closed') {
-      audioEngine.context.close();
-    }
+    timeoutManager.stop();
+    cleanupResources(transcoder, audioEngine.context);
   };
+
+  // Register cleanup on abort
+  abortManager.onAbort(cleanup);
 
   // Handler for when narration completes
   const onNarrationComplete = async () => {
-    console.log('[buildEpisode] Narration completed, starting fadeout');
+    logger.info(`Narration completed, starting fadeout`, {
+      component: 'buildEpisode',
+      elapsed: `${timeoutManager.getElapsed().toFixed(1)}s`,
+    });
 
     const onPlaybackEnd = () => {
-      console.log('[buildEpisode] Meditation completed');
+      logger.info(`Meditation completed`, {
+        component: 'buildEpisode',
+        totalDuration: `${timeoutManager.getElapsed().toFixed(1)}s`,
+      });
       cleanup();
       onComplete?.();
     };
@@ -96,13 +151,7 @@ export const buildEpisode = async (
   };
 
   // Start narration generation
-  console.log('[buildEpisode] Calling getNarration with:', {
-    prompt: options?.prompt || 'default',
-    voice: options?.voice || 'random',
-    length,
-    hasOnComplete: !!onNarrationComplete,
-  });
-  await getNarration(
+  const narrationCleanup = await getNarration(
     config,
     audioEngine.context,
     audioEngine.destination,
@@ -113,13 +162,16 @@ export const buildEpisode = async (
     },
     onNarrationComplete
   );
-  console.log(
-    '[buildEpisode] getNarration returned (narration started in background)'
-  );
+
+  // Register narration cleanup on abort
+  abortManager.onAbort(() => {
+    narrationCleanup();
+  });
 
   return {
     transcoder,
     cleanup,
     audioContext: audioEngine.context,
+    abortManager,
   };
 };
