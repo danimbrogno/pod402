@@ -6,6 +6,9 @@ export type UseAudioPlayerReturn = {
   isPlaying: boolean;
   isLoading: boolean;
   error: string | null;
+  currentTime: number;
+  duration: number;
+  progress: number; // 0-1 percentage
 };
 
 /**
@@ -17,6 +20,8 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -39,6 +44,8 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
       audioRef.current.currentTime = 0;
       audioRef.current.src = '';
       setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
     }
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
@@ -88,8 +95,17 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
           setIsLoading(true);
         };
 
+        audio.onloadedmetadata = () => {
+          setDuration(audio.duration || 0);
+        };
+
+        audio.ontimeupdate = () => {
+          setCurrentTime(audio.currentTime);
+        };
+
         audio.oncanplay = () => {
           setIsLoading(false);
+          setDuration(audio.duration || 0);
           // Try to play, but don't fail if autoplay is blocked
           audio.play().catch((err) => {
             console.log('Autoplay prevented, user interaction required:', err);
@@ -107,6 +123,7 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
 
         audio.onended = () => {
           setIsPlaying(false);
+          setCurrentTime(0);
           if (blobUrlRef.current) {
             URL.revokeObjectURL(blobUrlRef.current);
             blobUrlRef.current = null;
@@ -130,11 +147,16 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     [stop],
   );
 
+  const progress = duration > 0 ? currentTime / duration : 0;
+
   return {
     play,
     stop,
     isPlaying,
     isLoading,
     error,
+    currentTime,
+    duration,
+    progress,
   };
 }

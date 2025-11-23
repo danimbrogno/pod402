@@ -1,14 +1,13 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useX402 } from '~/utils/useX402';
 import { useConfig } from '~/contexts/ConfigContext';
-import { useAudioPlayer } from '~/hooks/useAudioPlayer';
 import { Button } from '~/components/ui/Button';
 import { Input } from '~/components/ui/Input';
 import { Textarea } from '~/components/ui/Textarea';
 import { Select } from '~/components/ui/Select';
 import { Card } from '~/components/ui/Card';
 import { Alert } from '~/components/ui/Alert';
-import { PlayerControls } from '~/components/ui/PlayerControls';
 
 type VoiceOption = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
 
@@ -51,42 +50,34 @@ const AMBIENCE_OPTIONS = Array.from({ length: 13 }, (_, i) => i + 1).map(
   (num) => ({
     value: num.toString(),
     label: AMBIENCE_TRACKS[num],
-  })
+  }),
 );
 
 export function Welcome() {
   const [prompt, setPrompt] = useState('Give me a meditation about gratitude');
   const [voice, setVoice] = useState<VoiceOption>('nova');
   const [ambience, setAmbience] = useState('1');
-  const { fetchWithPayment, isReady } = useX402();
-  const { streamEndpoint, demoEndpoint } = useConfig();
-  const { play, stop, isPlaying, isLoading, error } = useAudioPlayer();
+  const { isReady } = useX402();
+  const navigate = useNavigate();
 
-  const handleGenerateMeditation = async () => {
-    if (!fetchWithPayment || !isReady) {
+  const handleGenerateMeditation = () => {
+    if (!isReady) {
       return;
     }
 
-    // Build query parameters
+    // Navigate to meditation route with parameters
     const params = new URLSearchParams({
       prompt: prompt || 'Give me a meditation about gratitude',
       voice: voice,
       ambience: ambience,
     });
 
-    const streamUrl = `${streamEndpoint}?${params.toString()}`;
-
-    // Use the audio player hook to play the stream
-    await play(streamUrl, fetchWithPayment as typeof fetch);
+    navigate(`/meditation?${params.toString()}`);
   };
 
-  const handleStopPlayback = () => {
-    stop();
-  };
-
-  const handlePlayDemo = async () => {
-    // Demo doesn't require wallet connection, use regular fetch
-    await play(demoEndpoint);
+  const handlePlayDemo = () => {
+    // Navigate to meditation route with demo flag
+    navigate('/meditation?demo=true');
   };
 
   return (
@@ -139,20 +130,6 @@ export function Welcome() {
                 helperText="Choose your background soundscape"
               />
             </div>
-
-            {/* Error Display */}
-            {error && (
-              <Alert variant="error">
-                <p className="text-sm font-medium">{error}</p>
-              </Alert>
-            )}
-
-            {/* Player Controls */}
-            <PlayerControls
-              isPlaying={isPlaying}
-              isLoading={isLoading}
-              onStop={handleStopPlayback}
-            />
           </div>
         </Card>
       </div>
@@ -161,25 +138,18 @@ export function Welcome() {
       <footer className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-stone-200/50 shadow-lg z-40">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              variant="secondary"
-              fullWidth
-              onClick={handlePlayDemo}
-              disabled={isLoading || isPlaying}
-            >
-              {isLoading ? 'Loading...' : '🎧 Try Demo'}
+            <Button variant="secondary" fullWidth onClick={handlePlayDemo}>
+              🎧 Try Demo
             </Button>
             <Button
               variant="primary"
               fullWidth
               onClick={handleGenerateMeditation}
-              disabled={!isReady || isLoading || isPlaying}
+              disabled={!isReady}
             >
-              {isLoading
-                ? 'Generating...'
-                : !isReady
-                  ? 'Connect Wallet First'
-                  : '✨ Generate Meditation ($0.01)'}
+              {!isReady
+                ? 'Connect Wallet First'
+                : '✨ Generate Meditation ($0.01)'}
             </Button>
           </div>
         </div>
