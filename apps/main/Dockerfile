@@ -1,7 +1,7 @@
 # Multi-stage build for main application
 
 # Stage 1: Build stage
-FROM node:20.13.1-alpine AS builder
+FROM node:22.11.0-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -32,7 +32,7 @@ WORKDIR /app/apps/main
 RUN npm run build
 
 # Stage 2: Production stage
-FROM node:20.13.1-alpine AS production
+FROM node:22.11.0-alpine AS production
 
 # Create app directory
 WORKDIR /app

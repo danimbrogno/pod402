@@ -1,6 +1,6 @@
 import { reactRouter } from '@react-router/dev/vite';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type UserConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 const stripXfoAndSetCsp = {
@@ -42,6 +42,13 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 4000,
       host: 'localhost',
+      allowedHosts: [
+        'localhost',
+        '127.0.0.1',
+        '::1',
+        'zenden.3vl.ca',
+        'pod402.3vl.ca',
+      ],
     },
     ssr: {
       // noExternal: ['@farcaster/miniapp-sdk'],
@@ -51,5 +58,5 @@ export default defineConfig(({ mode }) => {
     env: {
       ...env,
     },
-  } as any;
+  } satisfies UserConfig;
 });

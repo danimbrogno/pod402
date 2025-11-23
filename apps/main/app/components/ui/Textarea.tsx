@@ -21,17 +21,17 @@ export function Textarea({
       {label && (
         <label
           htmlFor={textareaId}
-          className="block text-sm font-medium text-slate-700 mb-1.5"
+          className="block text-sm font-medium text-stone-700 mb-1.5"
         >
           {label}
         </label>
       )}
       <textarea
         id={textareaId}
-        className={`w-full px-4 py-2.5 border rounded-lg text-sm text-slate-900 bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none ${
+        className={`w-full px-4 py-2.5 border rounded-lg text-sm text-stone-900 bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-teal-600 resize-none ${
           error
             ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
-            : 'border-slate-300'
+            : 'border-stone-300'
         } ${className}`}
         {...props}
       />
@@ -39,7 +39,7 @@ export function Textarea({
         <p className="mt-1.5 text-sm text-rose-600">{error}</p>
       )}
       {helperText && !error && (
-        <p className="mt-1.5 text-xs text-slate-500">{helperText}</p>
+        <p className="mt-1.5 text-xs text-stone-500">{helperText}</p>
       )}
     </div>
   );

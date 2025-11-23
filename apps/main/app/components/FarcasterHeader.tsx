@@ -13,12 +13,12 @@ export function FarcasterHeader() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-700 to-teal-800 flex items-center justify-center">
               <span className="text-white text-sm font-bold">Z</span>
             </div>
-            <h1 className="text-lg font-semibold text-slate-900">Zen Den</h1>
+            <h1 className="text-lg font-semibold text-stone-900">Zen Den</h1>
           </div>
-          <div className="text-sm text-slate-500">Loading...</div>
+          <div className="text-sm text-stone-500">Loading...</div>
         </div>
       </div>
     );
@@ -50,12 +50,12 @@ export function FarcasterHeader() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-700 to-teal-800 flex items-center justify-center">
               <span className="text-white text-sm font-bold">Z</span>
             </div>
-            <h1 className="text-lg font-semibold text-slate-900">Zen Den</h1>
+            <h1 className="text-lg font-semibold text-stone-900">Zen Den</h1>
           </div>
-          <div className="text-sm text-slate-500">Loading...</div>
+          <div className="text-sm text-stone-500">Loading...</div>
         </div>
       </div>
     );
@@ -72,10 +72,10 @@ export function FarcasterHeader() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-700 to-teal-800 flex items-center justify-center">
               <span className="text-white text-sm font-bold">Z</span>
             </div>
-            <h1 className="text-lg font-semibold text-slate-900">Zen Den</h1>
+            <h1 className="text-lg font-semibold text-stone-900">Zen Den</h1>
           </div>
           <div className="flex items-center gap-3">
             {isConnected ? (
@@ -84,17 +84,17 @@ export function FarcasterHeader() {
                   <img
                     src={pfp.url}
                     alt={user.username || 'User'}
-                    className="w-8 h-8 rounded-full ring-2 ring-indigo-100"
+                    className="w-8 h-8 rounded-full ring-2 ring-teal-100"
                   />
                 )}
                 <div className="flex flex-col items-end">
                   {user.username && (
-                    <span className="text-sm font-medium text-slate-900">
+                    <span className="text-sm font-medium text-stone-900">
                       @{user.username}
                     </span>
                   )}
                   {channel?.name && (
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-stone-500">
                       {channel.name}
                     </span>
                   )}
@@ -104,7 +104,7 @@ export function FarcasterHeader() {
               <button
                 onClick={handleConnect}
                 disabled={isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                className="px-4 py-2 text-sm font-medium text-white bg-teal-700 rounded-lg hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 {isPending ? 'Connecting...' : 'Connect Wallet'}
               </button>
@@ -127,7 +127,7 @@ export function FarcasterHeader() {
         </div>
         <div className="flex items-center gap-3">
           {isConnected ? (
-            <div className="text-sm text-slate-500">Web Mode</div>
+            <div className="text-sm text-stone-500">Web Mode</div>
           ) : (
             <button
               onClick={handleConnect}

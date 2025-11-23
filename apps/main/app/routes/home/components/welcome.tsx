@@ -94,10 +94,10 @@ export function Welcome() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Hero Section */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold text-stone-900">
             Create Your Meditation
           </h1>
-          <p className="text-slate-600">
+          <p className="text-stone-600">
             Customize your meditation experience with AI-generated guidance
           </p>
         </div>
@@ -158,7 +158,7 @@ export function Welcome() {
       </div>
 
       {/* Fixed Footer with CTAs */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/50 shadow-lg z-40">
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-stone-200/50 shadow-lg z-40">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <Button

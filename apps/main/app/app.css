@@ -7,7 +7,7 @@
 
 html,
 body {
-  @apply bg-gradient-to-br from-indigo-50 via-white to-purple-50;
+  @apply bg-gradient-to-br from-amber-50 via-stone-50 to-amber-50;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -28,12 +28,12 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #a8a29e;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #78716c;
 }
 
 
