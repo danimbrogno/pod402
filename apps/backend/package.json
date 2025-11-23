@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "tsx watch src/server.ts",
+    "dev": "vite-node --watch src/server.ts",
     "start": "node dist/server.js",
     "preview": "node dist/server.js"
   },

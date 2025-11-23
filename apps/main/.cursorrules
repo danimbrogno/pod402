@@ -1,0 +1,41 @@
+# React Router 7 Rules
+
+## No `.client` File Suffix
+
+**Rule: Never use `.client` file suffixes in React Router 7**
+
+React Router 7 no longer supports the `.client` file naming convention. All components should use standard file extensions (`.tsx`, `.ts`, etc.).
+
+### Exception
+- `entry.client.tsx` is the official React Router 7 naming convention for the client entry point and should remain as-is.
+
+### How to Handle Client-Only Code
+
+Instead of using `.client` files, use one of these approaches:
+
+1. **Dynamic imports with `useEffect`**: Import client-only code inside `useEffect` hooks
+2. **Conditional rendering**: Check for `typeof window !== 'undefined'` before using browser APIs
+3. **Separate client-only utilities**: Create regular files and import them only in client-side code paths
+
+### Example
+
+```tsx
+// ❌ Don't do this
+// MyComponent.client.tsx
+
+// ✅ Do this instead
+// MyComponent.tsx
+import { useEffect, useState } from 'react';
+
+export function MyComponent() {
+  const [ClientOnlyLib, setClientOnlyLib] = useState(null);
+  
+  useEffect(() => {
+    import('./client-only-lib').then(setClientOnlyLib);
+  }, []);
+  
+  if (!ClientOnlyLib) return null;
+  return <ClientOnlyLib />;
+}
+```
+
