@@ -6,10 +6,11 @@ import cors from 'cors';
 import { Server } from 'http';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { appRouter, createContext } from '@project/trpc';
-import { paymentMiddleware, Network } from 'x402-express';
+import { paymentMiddleware } from 'x402-express';
 import { streamHandler } from './components/stream/stream';
 import { initializeAmbientAudioCache } from './components/stream/components/buildEpisode/components/ambientAudioCache';
 import { getConfig } from './getConfig';
+import { logger } from './utils/logger';
 
 const PORT = process.env.PORT || 3000;
 
@@ -37,14 +38,11 @@ function createServer() {
 
   app.use(
     paymentMiddleware(
-      config.receivingWallet, // your receiving wallet address
+      config.receivingWallet,
       {
-        // Route configurations for protected endpoints
         'GET /stream': {
-          // USDC amount in dollars
           price: '$0.01',
-          network: 'base-sepolia', // for mainnet, see Running on Mainnet section
-          // Optional: Add metadata for better discovery in x402 Bazaar
+          network: 'base-sepolia',
           config: {
             description: 'Get a custom meditation podcast file',
             inputSchema: {
@@ -99,16 +97,15 @@ function createServer() {
 // Cleanup function for tsx watch
 function cleanup() {
   if (server) {
-    console.log('🛑 Closing server...');
+    logger.info('Closing server...', { component: 'server' });
     server.close(() => {
-      console.log('✅ Server closed');
+      logger.info('Server closed', { component: 'server' });
       server = null;
     });
   }
 }
 
 // Handle cleanup on process termination
-// Note: Only register listeners once (tsx watch restarts the module)
 if (!process.listenerCount('SIGTERM')) {
   process.on('SIGTERM', cleanup);
 }
@@ -117,7 +114,6 @@ if (!process.listenerCount('SIGINT')) {
 }
 
 // Cleanup on module reload (tsx watch kills the process, but good to be safe)
-// Store reference in global to persist across reloads
 declare global {
   var __server__: Server | null | undefined;
 }
@@ -134,23 +130,33 @@ if (global.__server__) {
 
 async function start() {
   // Initialize ambient audio cache before starting server
-  console.log('🔄 Initializing ambient audio cache...');
+  logger.info('Initializing ambient audio cache...', {
+    component: 'server',
+  });
   try {
     await initializeAmbientAudioCache(config);
-    console.log('✅ Ambient audio cache ready');
+    logger.info('Ambient audio cache ready', { component: 'server' });
   } catch (error) {
-    console.error('⚠️ Failed to initialize ambient audio cache:', error);
-    console.log('⚠️ Ambient audio will be loaded from disk on demand');
+    logger.error('Failed to initialize ambient audio cache', error, {
+      component: 'server',
+    });
+    logger.warn('Ambient audio will be loaded from disk on demand', {
+      component: 'server',
+    });
   }
 
   // Create and start server
   const app = createServer();
   server = app.listen(PORT, () => {
-    console.log(`🚀 Backend server running on http://localhost:${PORT}`);
-    console.log(`📡 tRPC endpoint: http://localhost:${PORT}/api`);
-    console.log(`🎵 Stream endpoint: http://localhost:${PORT}/stream`);
-    console.log(`🎵 Demo endpoint: http://localhost:${PORT}/demo`);
-    console.log('LFG!');
+    logger.info('Backend server started', {
+      component: 'server',
+      port: PORT,
+      endpoints: {
+        trpc: `http://localhost:${PORT}/api`,
+        stream: `http://localhost:${PORT}/stream`,
+        demo: `http://localhost:${PORT}/demo`,
+      },
+    });
   });
 
   // Store in global for cleanup on reload
@@ -158,12 +164,12 @@ async function start() {
 
   server.on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(
-        `❌ Port ${PORT} is already in use. Please stop the other server.`,
-      );
+      logger.error(`Port ${PORT} is already in use`, err, {
+        component: 'server',
+      });
       process.exit(1);
     } else {
-      console.error('❌ Server error:', err);
+      logger.error('Server error', err, { component: 'server' });
       process.exit(1);
     }
   });

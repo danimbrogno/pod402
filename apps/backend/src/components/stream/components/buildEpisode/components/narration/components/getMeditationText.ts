@@ -1,5 +1,8 @@
 import OpenAI from 'openai';
 import { Config } from '../../../../../../../interface';
+import { logger } from '../../../../../../../utils/logger';
+import { withRetry } from '../../../../../../../utils/openaiClient';
+import { AbortManager } from '../../../../../../../utils/abortManager';
 
 export async function* getMeditationText(
   config: Config,
@@ -10,85 +13,112 @@ export async function* getMeditationText(
   }: {
     prompt?: string;
     length?: number;
-  }
+  },
+  abortManager?: AbortManager
 ): AsyncGenerator<string, void, unknown> {
-  console.log('[getMeditationText] Function called');
-  console.log('[getMeditationText] Starting meditation text generation');
-  console.log('[getMeditationText] Parameters:', {
-    prompt:
-      prompt.substring(0, 150) + (prompt.length > 150 ? ' and so on...' : ''),
+  const promptPreview =
+    prompt.substring(0, 150) + (prompt.length > 150 ? '...' : '');
+  logger.info(`Starting meditation text generation`, {
+    component: 'getMeditationText',
+    promptPreview,
     length,
-    hasOpenAIKey: !!process.env.OPENAI_API_KEY,
   });
 
-  prompt =
-    prompt.substring(0, 150) + (prompt.length > 150 ? ' and so on...' : '');
+  // Truncate prompt for API
+  const truncatedPrompt =
+    prompt.substring(0, 150) + (prompt.length > 150 ? '...' : '');
 
-  const stream = await openai.chat.completions.create({
-    model: 'gpt-5-nano',
-    messages: [
-      { role: 'user', content: prompt },
-      {
-        role: 'system',
-        content: config.openai.textInstruction(length),
-      },
-    ],
-    stream: true,
+  abortManager?.throwIfAborted();
+
+  // Create stream with retry logic
+  const stream = await withRetry(
+    () =>
+      openai.chat.completions.create(
+        {
+          model: 'gpt-5-nano',
+          messages: [
+            { role: 'user', content: truncatedPrompt },
+            {
+              role: 'system',
+              content: config.openai.textInstruction(length),
+            },
+          ],
+          stream: true,
+        },
+        { signal: abortManager?.getSignal() }
+      ),
+    { component: 'getMeditationText', operation: 'chat.completions.create' }
+  );
+
+  logger.debug(`Stream started, waiting for chunks`, {
+    component: 'getMeditationText',
   });
 
-  console.log('[getMeditationText] Stream started, waiting for chunks...');
   let currentSentence = '';
   let sentenceCount = 0;
   let totalChunks = 0;
 
   // Helper function to find sentence endings
-  // Sentences end with . ! or ? followed by space, newline, or end of string
   const findSentenceEnd = (text: string): number => {
-    // Look for sentence-ending punctuation followed by whitespace or end of string
     const sentenceEndRegex = /[.!?](?:\s+|$)/;
     const match = text.match(sentenceEndRegex);
     return match ? match.index! + match[0].length : -1;
   };
 
-  for await (const chunk of stream) {
-    const content = chunk.choices[0]?.delta?.content || '';
+  try {
+    for await (const chunk of stream) {
+      abortManager?.throwIfAborted();
 
-    if (content) {
-      totalChunks++;
-      currentSentence += content;
+      const content = chunk.choices[0]?.delta?.content || '';
 
-      // Check for sentence endings
-      let sentenceEndIndex = findSentenceEnd(currentSentence);
+      if (content) {
+        totalChunks++;
+        currentSentence += content;
 
-      while (sentenceEndIndex !== -1) {
-        // Extract the complete sentence (everything before the sentence ending)
-        const completeSentence = currentSentence
-          .substring(0, sentenceEndIndex)
-          .trim();
+        // Check for sentence endings
+        let sentenceEndIndex = findSentenceEnd(currentSentence);
 
-        if (completeSentence) {
-          sentenceCount++;
-          const preview =
-            completeSentence.substring(0, 50) +
-            (completeSentence.length > 50 ? '...' : '');
-          console.log(
-            `[getMeditationText] Sentence ${sentenceCount} yielded (${completeSentence.length} chars): "${preview}"`
-          );
-          yield completeSentence;
+        while (sentenceEndIndex !== -1) {
+          const completeSentence = currentSentence
+            .substring(0, sentenceEndIndex)
+            .trim();
+
+          if (completeSentence) {
+            sentenceCount++;
+            const preview =
+              completeSentence.substring(0, 50) +
+              (completeSentence.length > 50 ? '...' : '');
+            logger.debug(`Yielding sentence ${sentenceCount}`, {
+              component: 'getMeditationText',
+              preview,
+              length: completeSentence.length,
+            });
+            yield completeSentence;
+          }
+
+          // Remove the yielded sentence from the buffer
+          currentSentence = currentSentence.substring(sentenceEndIndex).trim();
+
+          // Check if there are more sentence endings
+          sentenceEndIndex = findSentenceEnd(currentSentence);
         }
-
-        // Remove the yielded sentence from the buffer
-        currentSentence = currentSentence.substring(sentenceEndIndex).trim();
-
-        // Check if there are more sentence endings in the remaining text
-        sentenceEndIndex = findSentenceEnd(currentSentence);
       }
     }
+  } catch (error) {
+    if (abortManager?.isAborted()) {
+      logger.info(`Text generation aborted`, {
+        component: 'getMeditationText',
+        sentencesGenerated: sentenceCount,
+      });
+      return;
+    }
+    throw error;
   }
 
-  console.log(
-    `[getMeditationText] Stream completed. Total chunks received: ${totalChunks}`
-  );
+  logger.debug(`Stream completed`, {
+    component: 'getMeditationText',
+    totalChunks,
+  });
 
   // Yield any remaining text as the final sentence
   const finalSentence = currentSentence.trim();
@@ -96,13 +126,16 @@ export async function* getMeditationText(
     sentenceCount++;
     const preview =
       finalSentence.substring(0, 50) + (finalSentence.length > 50 ? '...' : '');
-    console.log(
-      `[getMeditationText] Final sentence ${sentenceCount} yielded (${finalSentence.length} chars): "${preview}"`
-    );
+    logger.debug(`Yielding final sentence ${sentenceCount}`, {
+      component: 'getMeditationText',
+      preview,
+      length: finalSentence.length,
+    });
     yield finalSentence;
   }
 
-  console.log(
-    `[getMeditationText] Completed. Total sentences: ${sentenceCount}`
-  );
+  logger.info(`Text generation completed`, {
+    component: 'getMeditationText',
+    totalSentences: sentenceCount,
+  });
 }
