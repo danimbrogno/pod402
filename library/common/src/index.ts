@@ -63,56 +63,6 @@ export async function retry<T>(
 }
 
 /**
- * Load environment variables from project root .env file
- * This ensures all apps can access the same .env file at the project root
- */
-export function loadEnvFromRoot(): void {
-  try {
-    // Use synchronous require for dotenv (works in both CommonJS and ES modules when bundled)
-    const dotenv = require('dotenv');
-    const { resolve } = require('path');
-    const { existsSync, readFileSync } = require('fs');
-
-    // Try to find project root by looking for package.json or going up from current dir
-    let rootPath = process.cwd();
-
-    // Look for root indicators (package.json with workspaces, or turbo.json)
-    let currentPath = rootPath;
-    for (let i = 0; i < 5; i++) {
-      const packageJsonPath = resolve(currentPath, 'package.json');
-      const turboJsonPath = resolve(currentPath, 'turbo.json');
-
-      if (existsSync(packageJsonPath)) {
-        try {
-          const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-          if (pkg.workspaces || pkg.name === 'web3-starter') {
-            rootPath = currentPath;
-            break;
-          }
-        } catch {
-          // Continue searching
-        }
-      }
-
-      if (existsSync(turboJsonPath)) {
-        rootPath = currentPath;
-        break;
-      }
-
-      currentPath = resolve(currentPath, '..');
-    }
-
-    const envPath = resolve(rootPath, '.env');
-    if (existsSync(envPath)) {
-      dotenv.config({ path: envPath });
-    }
-  } catch (error) {
-    // Silently fail if dotenv is not available or .env doesn't exist
-    // This allows the app to work with environment variables set elsewhere
-  }
-}
-
-/**
  * Resolves the assets directory path.
  * Priority:
  * 1. ASSETS_PATH environment variable (if set)

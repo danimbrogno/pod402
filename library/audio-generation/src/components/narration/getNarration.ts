@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { Config } from '../../../types';
+import { Config } from '../../types';
 import { getMeditationText } from './components/getMeditationText';
 import { getPhraseAudio } from './components/getPhraseAudio';
 
@@ -17,7 +17,7 @@ export const getNarration = async (
     voice?: string;
     length?: number;
   },
-  onComplete?: () => Promise<void>
+  onComplete?: () => Promise<void>,
 ): Promise<() => void> => {
   const { prompt, voice: voiceOverride, length } = narrationOptions;
 
@@ -43,7 +43,7 @@ export const getNarration = async (
   console.log(
     `[getNarration] Selected voice: ${voice}${
       voiceOverride ? ' (from query)' : ' (random)'
-    }`
+    }`,
   );
   console.log('[getNarration] Starting narration generation (non-blocking)');
 
@@ -52,7 +52,7 @@ export const getNarration = async (
   let isAborted = false;
 
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: config.openai.apiKey,
   });
 
   // Process sentences sequentially without blocking the caller
@@ -87,45 +87,45 @@ export const getNarration = async (
           `[getNarration] Received sentence ${
             sentenceIndex + 1
           } from generator:`,
-          sentence.substring(0, 100) + (sentence.length > 100 ? '...' : '')
+          sentence.substring(0, 100) + (sentence.length > 100 ? '...' : ''),
         );
         if (isAborted) {
           console.log(
             `[getNarration] Aborted during sentence ${
               sentenceIndex + 1
-            } generation`
+            } generation`,
           );
           break;
         }
 
         sentenceIndex++;
         console.log(
-          `[getNarration] Processing sentence ${sentenceIndex}, waiting for previous to finish...`
+          `[getNarration] Processing sentence ${sentenceIndex}, waiting for previous to finish...`,
         );
 
         // Apply delay before first narration (if configured) - but only after we have the text
         if (isFirstSentence && delayBeforeFirstNarration > 0 && !isAborted) {
           console.log(
-            `[getNarration] Waiting ${delayBeforeFirstNarration}s before first narration playback...`
+            `[getNarration] Waiting ${delayBeforeFirstNarration}s before first narration playback...`,
           );
           await new Promise((resolve) =>
-            setTimeout(resolve, delayBeforeFirstNarration * 1000)
+            setTimeout(resolve, delayBeforeFirstNarration * 1000),
           );
           isFirstSentence = false;
         }
 
         if (isAborted) {
           console.log(
-            `[getNarration] Aborted during sentence ${sentenceIndex} processing`
+            `[getNarration] Aborted during sentence ${sentenceIndex} processing`,
           );
           break;
         }
 
         console.log(
-          `[getNarration] Starting getPhraseAudio for sentence ${sentenceIndex} with voice: ${voice}`
+          `[getNarration] Starting getPhraseAudio for sentence ${sentenceIndex} with voice: ${voice}`,
         );
         console.log(
-          `[getNarration] Audio context state before getPhraseAudio: ${context.state}, currentTime: ${context.currentTime}`
+          `[getNarration] Audio context state before getPhraseAudio: ${context.state}, currentTime: ${context.currentTime}`,
         );
 
         // Wait for the previous phrase's audio to finish before starting the next one
@@ -136,15 +136,15 @@ export const getNarration = async (
             context,
             destination,
             sentence,
-            voice
+            voice,
           )) {
             console.log(
-              `[getNarration] getPhraseAudio yielded for sentence ${sentenceIndex}`
+              `[getNarration] getPhraseAudio yielded for sentence ${sentenceIndex}`,
             );
             // Generator yields when audio playback completes
             if (isAborted) {
               console.log(
-                `[getNarration] Aborted during sentence ${sentenceIndex} audio playback`
+                `[getNarration] Aborted during sentence ${sentenceIndex} audio playback`,
               );
               break;
             }
@@ -152,13 +152,13 @@ export const getNarration = async (
         } catch (error) {
           console.error(
             `[getNarration] Error in getPhraseAudio for sentence ${sentenceIndex}:`,
-            error
+            error,
           );
           throw error;
         }
 
         console.log(
-          `[getNarration] Audio context state after getPhraseAudio: ${context.state}, currentTime: ${context.currentTime}`
+          `[getNarration] Audio context state after getPhraseAudio: ${context.state}, currentTime: ${context.currentTime}`,
         );
 
         if (isFirstSentence) {
@@ -172,10 +172,10 @@ export const getNarration = async (
         // Add delay after sentence (except for the last one, which will be handled by the stream ending)
         if (delayAfterNarrationSentence > 0 && !isAborted) {
           console.log(
-            `[getNarration] Waiting ${delayAfterNarrationSentence}s before next sentence...`
+            `[getNarration] Waiting ${delayAfterNarrationSentence}s before next sentence...`,
           );
           await new Promise((resolve) =>
-            setTimeout(resolve, delayAfterNarrationSentence * 1000)
+            setTimeout(resolve, delayAfterNarrationSentence * 1000),
           );
         }
       }
@@ -191,15 +191,15 @@ export const getNarration = async (
       if (!isAborted) {
         console.error(
           '[getNarration] Error during narration generation:',
-          error
+          error,
         );
         console.error(
           '[getNarration] Error stack:',
-          error instanceof Error ? error.stack : 'No stack trace'
+          error instanceof Error ? error.stack : 'No stack trace',
         );
       } else {
         console.log(
-          '[getNarration] Error occurred but narration was aborted, ignoring'
+          '[getNarration] Error occurred but narration was aborted, ignoring',
         );
       }
     }
@@ -217,7 +217,7 @@ export const getNarration = async (
 
   // Return immediately without waiting for narration to complete
   console.log(
-    '[getNarration] Narration generation started in background, returning immediately'
+    '[getNarration] Narration generation started in background, returning immediately',
   );
 
   return cleanup;

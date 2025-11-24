@@ -6,8 +6,5 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"
-  },
-  "dependencies": {
-    "dotenv": "^17.2.3"
   }
 }

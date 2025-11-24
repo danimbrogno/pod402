@@ -49,6 +49,7 @@ export type Config = {
     maxLength: number;
   };
   openai: {
+    apiKey: string;
     speechInstruction: string;
     textInstruction: (length: number) => string;
   };

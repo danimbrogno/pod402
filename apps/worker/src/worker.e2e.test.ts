@@ -12,8 +12,9 @@ import postgres from 'postgres';
 import { episodes, users } from '@project/drizzle';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { mkdir, rm } from 'fs/promises';
+import { mkdir, rm, readdir } from 'fs/promises';
 import { existsSync } from 'fs';
+import { join } from 'path';
 import type { Job } from 'bullmq';
 
 describe('Worker E2E Test', () => {
@@ -103,26 +104,59 @@ describe('Worker E2E Test', () => {
   });
 
   afterAll(async () => {
-    // Clean up worker
-    if (worker) {
-      await worker.close();
-    }
-    await closeQueue();
+    try {
+      // Clean up worker
+      if (worker) {
+        await worker.close();
+      }
+      await closeQueue();
 
-    // Clean up database
-    if (db && testEpisodeId) {
-      await db.delete(episodes).where(eq(episodes.uuid, testEpisodeId));
-    }
-    if (db && testUserId) {
-      await db.delete(users).where(eq(users.uuid, testUserId));
-    }
-    if (client) {
-      await client.end();
+      // Clean up database
+      if (db && testEpisodeId) {
+        await db.delete(episodes).where(eq(episodes.uuid, testEpisodeId));
+      }
+      if (db && testUserId) {
+        await db.delete(users).where(eq(users.uuid, testUserId));
+      }
+      if (client) {
+        await client.end();
+      }
+    } catch (error) {
+      console.error('[test] Error during cleanup:', error);
     }
 
-    // Clean up test output directory
-    if (existsSync(testOutputDir)) {
-      await rm(testOutputDir, { recursive: true, force: true });
+    // Clean up test output directory and all generated files
+    try {
+      if (existsSync(testOutputDir)) {
+        // List all files in the directory before removing
+        const files = await readdir(testOutputDir);
+        console.log(
+          `[test] Cleaning up ${files.length} test file(s) from ${testOutputDir}`,
+        );
+        await rm(testOutputDir, { recursive: true, force: true });
+        console.log(`[test] Test output directory removed: ${testOutputDir}`);
+      }
+    } catch (error) {
+      console.error(
+        `[test] Error cleaning up test output directory ${testOutputDir}:`,
+        error,
+      );
+      // Try to clean up individual files if directory removal fails
+      try {
+        if (existsSync(testOutputDir)) {
+          const files = await readdir(testOutputDir);
+          for (const file of files) {
+            const filePath = join(testOutputDir, file);
+            await rm(filePath, { force: true });
+            console.log(`[test] Removed test file: ${filePath}`);
+          }
+        }
+      } catch (fileError) {
+        console.error(
+          '[test] Error cleaning up individual test files:',
+          fileError,
+        );
+      }
     }
 
     // Restore original output dir
@@ -136,6 +170,24 @@ describe('Worker E2E Test', () => {
   beforeEach(async () => {
     // Wait a bit for worker to be ready
     await new Promise((resolve) => setTimeout(resolve, 1000));
+  });
+
+  afterEach(async () => {
+    // Clean up any test files that might have been created during this test
+    // This ensures cleanup even if a test fails mid-execution
+    try {
+      if (existsSync(testOutputDir)) {
+        const files = await readdir(testOutputDir);
+        // Only log if there are files to clean up
+        if (files.length > 0) {
+          console.log(
+            `[test] afterEach: Found ${files.length} file(s) in test output directory`,
+          );
+        }
+      }
+    } catch (error) {
+      // Ignore errors in afterEach - main cleanup happens in afterAll
+    }
   });
 
   it('should process a meditation job successfully', async () => {
@@ -251,7 +303,30 @@ describe('Worker E2E Test', () => {
     // Wait a bit to see if it fails
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    // Clean up
-    await db.delete(episodes).where(eq(episodes.uuid, invalidEpisodeId));
+    // Clean up database entry
+    try {
+      await db.delete(episodes).where(eq(episodes.uuid, invalidEpisodeId));
+    } catch (error) {
+      console.error(
+        `[test] Error cleaning up invalid episode ${invalidEpisodeId}:`,
+        error,
+      );
+    }
+
+    // Clean up any test files that might have been created for this episode
+    try {
+      if (existsSync(testOutputDir)) {
+        const testFilePath = join(testOutputDir, `${invalidEpisodeId}.mp3`);
+        if (existsSync(testFilePath)) {
+          await rm(testFilePath, { force: true });
+          console.log(`[test] Cleaned up test file: ${testFilePath}`);
+        }
+      }
+    } catch (error) {
+      console.error(
+        `[test] Error cleaning up test file for episode ${invalidEpisodeId}:`,
+        error,
+      );
+    }
   });
 });

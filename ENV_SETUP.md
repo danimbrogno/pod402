@@ -5,6 +5,8 @@ This project uses a centralized `.env` file at the project root for configuratio
 ## Setup
 
 1. Create a `.env` file in the project root (copy from this template):
+   
+   **Note:** For local overrides, create a `.env.local` file (this file is gitignored and won't be committed)
 
 ```bash
 # Database Configuration
@@ -25,7 +27,7 @@ ASSETS_PATH=./assets
 FFMPEG_PATH=/usr/bin/ffmpeg
 FFPROBE_PATH=/usr/bin/ffprobe
 
-# OpenAI (set in your local .env if needed)
+# OpenAI (set in .env.local for local development - this file is gitignored)
 # OPENAI_API_KEY=your_key_here
 
 # Receiving Wallet (set in your local .env if needed)
@@ -35,11 +37,12 @@ FFPROBE_PATH=/usr/bin/ffprobe
 
 ## How It Works
 
-The `loadEnvFromRoot()` function in `@project/common` automatically:
+Environment variables are loaded using `dotenv-flow` CLI in npm scripts. This approach:
 
-1. Finds the project root by looking for `package.json` with workspaces or `turbo.json`
-2. Loads the `.env` file from the project root
-3. Makes all environment variables available to all apps
+1. Automatically loads `.env`, `.env.local`, `.env.{NODE_ENV}`, and `.env.{NODE_ENV}.local` files
+2. Files are loaded in order with later files overriding earlier ones (`.env.local` overrides `.env`)
+3. Works for all apps without bundling env-loading logic into production code
+4. In production containers, environment variables should be set by the container runtime (no .env files needed)
 
 ## Apps That Use Database
 
@@ -47,7 +50,10 @@ The `loadEnvFromRoot()` function in `@project/common` automatically:
 - **Backend** (`apps/backend`) - API server (if it needs DB access)
 - **Drizzle** (`library/drizzle`) - Database migrations and schema
 
-All of these apps automatically load the `.env` file from the project root when they start.
+All npm scripts use `dotenv-flow` CLI to automatically load `.env` files before running commands. This means:
+- Environment variables are loaded at runtime (not bundled into code)
+- `.env.local` files work for local overrides
+- Production containers should set environment variables directly (no .env files needed)
 
 ## Default Credentials
 

@@ -1,7 +1,3 @@
-import { loadEnvFromRoot } from '@project/common';
-
-// Load .env from project root
-loadEnvFromRoot();
 import { createWorker, closeQueue } from './queue';
 import { processMeditationJob } from './processors/meditationProcessor';
 

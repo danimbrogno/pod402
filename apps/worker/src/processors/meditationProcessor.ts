@@ -77,6 +77,7 @@ export async function processMeditationJob(
         maxLength: 60 * 60,
       },
       openai: {
+        apiKey: process.env.OPENAI_API_KEY || '',
         speechInstruction:
           'Speak like a meditation coach. Calm, soothing, slow and softly.',
         textInstruction: (

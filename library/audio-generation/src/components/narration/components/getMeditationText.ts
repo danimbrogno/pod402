@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { Config } from '../../../../types';
+import { Config } from '../../../types';
 
 export async function* getMeditationText(
   config: Config,
@@ -18,7 +18,7 @@ export async function* getMeditationText(
     prompt:
       prompt.substring(0, 150) + (prompt.length > 150 ? ' and so on...' : ''),
     length,
-    hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+    hasOpenAIKey: !!config.openai.apiKey,
   });
 
   prompt =
