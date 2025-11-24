@@ -53,16 +53,6 @@ export const buildEpisode = async (
     }`
   );
 
-  // Load ambient audio
-  console.log('[buildEpisode] Loading ambient audio...');
-  await getAmbientAudio(
-    config,
-    audioEngine.context,
-    audioEngine.destination,
-    ambientNum
-  );
-  console.log('[buildEpisode] Ambient audio started');
-
   // Cleanup function for transcoder and audio context
   const cleanup = () => {
     console.log('[buildEpisode] Cleanup requested');
@@ -95,6 +85,32 @@ export const buildEpisode = async (
     fadeOutAndEnd(config, audioEngine.gain, audioEngine.context, onPlaybackEnd);
   };
 
+  // Promise to track when first narration audio is ready
+  let resolveFirstAudioReady: () => void;
+  const firstAudioReadyPromise = new Promise<void>((resolve) => {
+    resolveFirstAudioReady = resolve;
+  });
+
+  // Handler for when first narration audio is ready - start ambient audio then
+  const onFirstAudioReady = () => {
+    console.log('[buildEpisode] First narration audio ready, starting ambient audio...');
+    // Start ambient audio now that first narration audio is ready
+    getAmbientAudio(
+      config,
+      audioEngine.context,
+      audioEngine.destination,
+      ambientNum
+    )
+      .then(() => {
+        console.log('[buildEpisode] Ambient audio started');
+        resolveFirstAudioReady();
+      })
+      .catch((error) => {
+        console.error('[buildEpisode] Failed to start ambient audio:', error);
+        resolveFirstAudioReady(); // Resolve anyway to not block narration
+      });
+  };
+
   // Start narration generation
   console.log('[buildEpisode] Calling getNarration with:', {
     prompt: options?.prompt || 'default',
@@ -111,11 +127,16 @@ export const buildEpisode = async (
       voice: options?.voice,
       length,
     },
-    onNarrationComplete
+    onNarrationComplete,
+    onFirstAudioReady
   );
   console.log(
     '[buildEpisode] getNarration returned (narration started in background)'
   );
+
+  // Wait for first audio to be ready (and ambient to start) before continuing
+  await firstAudioReadyPromise;
+  console.log('[buildEpisode] First audio ready and ambient started');
 
   return {
     transcoder,

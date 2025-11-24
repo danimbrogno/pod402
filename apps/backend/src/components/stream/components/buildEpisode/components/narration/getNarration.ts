@@ -21,7 +21,8 @@ export const getNarration = async (
     voice?: string;
     length?: number;
   },
-  onComplete?: () => Promise<void>
+  onComplete?: () => Promise<void>,
+  onFirstAudioReady?: () => void
 ): Promise<() => void> => {
   const { prompt, voice: voiceOverride, length } = narrationOptions;
 
@@ -103,16 +104,9 @@ export const getNarration = async (
           `[getNarration] Processing sentence ${sentenceIndex}, waiting for previous to finish...`
         );
 
-        // Apply delay before first narration (if configured) - but only after we have the text
-        if (isFirstSentence && delayBeforeFirstNarration > 0 && !isAborted) {
-          console.log(
-            `[getNarration] Waiting ${delayBeforeFirstNarration}s before first narration playback...`
-          );
-          await new Promise((resolve) =>
-            setTimeout(resolve, delayBeforeFirstNarration * 1000)
-          );
-          isFirstSentence = false;
-        }
+        // Skip delayBeforeFirstNarration - we're already waiting for first audio to be ready
+        // The onFirstAudioReady callback will be called when the first audio is decoded,
+        // allowing ambient audio to start at the same time as narration
 
         if (isAborted) {
           console.log(
@@ -136,7 +130,8 @@ export const getNarration = async (
             context,
             destination,
             sentence,
-            voice
+            voice,
+            isFirstSentence ? onFirstAudioReady : undefined
           )) {
             console.log(
               `[getNarration] getPhraseAudio yielded for sentence ${sentenceIndex}`
