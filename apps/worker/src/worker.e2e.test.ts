@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { loadEnvFromRoot } from '@project/common';
 import {
   addMeditationJob,
   meditationQueue,
