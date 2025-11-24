@@ -1,5 +1,6 @@
-import { Config } from './interface';
+import { Config } from '@project/audio-generation';
 import { facilitator } from '@coinbase/x402'; // For mainnet
+import { getAssetsDir } from './utils/getAssetsDir';
 
 export function getConfig({
   ffmpegPath,
@@ -59,5 +60,6 @@ export function getConfig({
     },
     errorMessage:
       "Sorry, I'm having trouble generating a meditation right now. Please try again later.",
+    assetsDir: getAssetsDir(),
   };
 }

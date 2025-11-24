@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, timestamp, varchar } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 /**
@@ -21,6 +21,7 @@ export const episodes = pgTable('episodes', {
   url: text('url').notNull(), // URL to access the audio file
   contentType: text('content_type').notNull(), // MIME type (e.g., 'audio/wav')
   size: integer('size').notNull(), // File size in bytes
+  jobId: varchar('job_id', { length: 191 }),
   userId: uuid('user_id').notNull().references(() => users.uuid, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
