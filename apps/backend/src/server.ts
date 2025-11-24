@@ -40,7 +40,7 @@ function createServer() {
       config.receivingWallet, // your receiving wallet address
       {
         // Route configurations for protected endpoints
-        'GET /stream': {
+        'GET /api/create-meditation': {
           // USDC amount in dollars
           price: '$0.01',
           network: 'base-sepolia', // for mainnet, see Running on Mainnet section
@@ -69,7 +69,18 @@ function createServer() {
                 },
               },
             },
-            outputSchema: null,
+            outputSchema: {
+              type: 'object',
+              properties: {
+                url: {
+                  type: 'string',
+                  format: 'uri',
+                  description:
+                    'URL to access the generated meditation audio stream',
+                },
+              },
+              required: ['url'],
+            },
           },
         },
       },
@@ -77,12 +88,38 @@ function createServer() {
     ),
   );
 
-  // Stream audio endpoint
+  // Endpoint that returns URL to stream (for x402 payment flow)
+  // This endpoint is protected by x402 payment middleware
+  // After payment, it returns JSON with the stream URL
+  app.get('/api/create-meditation', (req, res) => {
+    // Build the stream URL with query parameters
+    const params = new URLSearchParams();
+    if (req.query.prompt) params.set('prompt', req.query.prompt as string);
+    if (req.query.voice) params.set('voice', req.query.voice as string);
+    if (req.query.ambience)
+      params.set('ambience', req.query.ambience as string);
+
+    // Determine origin - prefer host header, fallback to localhost
+    const host = req.get('host') || `localhost:${PORT}`;
+    const protocol = req.protocol || 'http';
+    const origin = `${protocol}://${host}`;
+    const streamUrl = `${origin}/api/meditation/full?${params.toString()}`;
+
+    console.log('[server] /api/create-meditation endpoint returning URL:', {
+      streamUrl,
+      params: params.toString(),
+    });
+
+    // Return JSON with the URL (x402 will handle this as the output)
+    res.json({ url: streamUrl });
+  });
+
+  // Actual streaming audio endpoints
   app.get(
-    '/stream',
+    '/api/meditation/full',
     streamHandler(config, config.environment === 'production' ? 200 : 30),
   );
-  app.get('/demo', streamHandler(config, 30));
+  app.get('/api/meditation/demo', streamHandler(config, 30));
 
   // tRPC endpoint
   app.use(
@@ -148,8 +185,15 @@ async function start() {
   server = app.listen(PORT, () => {
     console.log(`🚀 Backend server running on http://localhost:${PORT}`);
     console.log(`📡 tRPC endpoint: http://localhost:${PORT}/api`);
-    console.log(`🎵 Stream endpoint: http://localhost:${PORT}/stream`);
-    console.log(`🎵 Demo endpoint: http://localhost:${PORT}/demo`);
+    console.log(
+      `💰 Create meditation: http://localhost:${PORT}/api/create-meditation`,
+    );
+    console.log(
+      `🎵 Full meditation: http://localhost:${PORT}/api/meditation/full`,
+    );
+    console.log(
+      `🎵 Demo meditation: http://localhost:${PORT}/api/meditation/demo`,
+    );
     console.log('LFG!');
   });
 

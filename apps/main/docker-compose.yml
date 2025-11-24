@@ -19,8 +19,8 @@ services:
       - FARCASTER_SPLASH_IMAGE_URL=${FARCASTER_SPLASH_IMAGE_URL:-}
       - FARCASTER_SPLASH_BG_COLOR=${FARCASTER_SPLASH_BG_COLOR:-#ffffff}
       # API endpoints
-      - STREAM_ENDPOINT=${STREAM_ENDPOINT:-https://pod402.3vl.ca/stream}
-      - DEMO_ENDPOINT=${DEMO_ENDPOINT:-https://pod402.3vl.ca/demo}
+      - STREAM_ENDPOINT=${STREAM_ENDPOINT:-https://pod402.3vl.ca/api/create-meditation}
+      - DEMO_ENDPOINT=${DEMO_ENDPOINT:-https://pod402.3vl.ca/api/meditation/demo}
     restart: unless-stopped
     # Optional: Add healthcheck if you add a /health route
     # healthcheck:
