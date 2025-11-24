@@ -1,5 +1,5 @@
 import { getAmbientAudio } from './components/getAmbientAudio';
-import { Config } from '../../../../interface';
+import { Config } from '@project/audio-generation';
 import { getAudioContext } from './components/getAudioContext';
 import { transcode } from './components/transcode';
 import { getNarration } from './components/narration/getNarration';

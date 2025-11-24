@@ -1,4 +1,4 @@
-import { Queue, Worker, QueueOptions, WorkerOptions } from 'bullmq';
+import { Queue, Worker, QueueOptions, WorkerOptions, type Job } from 'bullmq';
 import Redis from 'ioredis';
 
 // Job data interface for meditation processing
@@ -12,9 +12,12 @@ export interface MeditationJobData {
 }
 
 // Create Redis connection
-const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+const redisConnection = new Redis(
+  process.env.REDIS_URL || 'redis://localhost:6379',
+  {
+    maxRetriesPerRequest: null,
+  },
+);
 
 // Queue options
 const queueOptions: QueueOptions = {
@@ -48,17 +51,18 @@ const workerOptions: WorkerOptions = {
 // Create queue instance
 export const meditationQueue = new Queue<MeditationJobData>(
   'meditation-generation',
-  queueOptions
+  queueOptions,
 );
 
 // Create worker instance (will be initialized in worker.ts)
+// BullMQ's Worker actually passes a full Job object, not just { data }
 export function createWorker(
-  processor: (job: { data: MeditationJobData }) => Promise<void>
+  processor: (job: Job<MeditationJobData>) => Promise<void>,
 ): Worker<MeditationJobData> {
   return new Worker<MeditationJobData>(
     'meditation-generation',
     processor,
-    workerOptions
+    workerOptions,
   );
 }
 

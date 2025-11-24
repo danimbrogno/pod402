@@ -1,13 +1,19 @@
-import type { Config } from 'drizzle-kit';
-import * as dotenv from 'dotenv';
+import { defineConfig } from 'drizzle-kit';
+import { loadEnvFromRoot } from '@project/common';
 
-dotenv.config();
+// Load .env from project root
+loadEnvFromRoot();
 
-export default {
+const url = process.env.DATABASE_URL;
+if (!url) {
+  throw new Error('DATABASE_URL is not set');
+}
+
+export default defineConfig({
   schema: './src/index.ts',
   out: './migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://localhost:5432/app',
+    url,
   },
-} satisfies Config;
+});

@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { Config } from '../../../../../../../interface';
+import { Config } from '@project/audio-generation';
 
 export async function* getMeditationText(
   config: Config,

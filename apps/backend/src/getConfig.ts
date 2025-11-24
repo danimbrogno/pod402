@@ -1,6 +1,6 @@
 import { Config } from '@project/audio-generation';
 import { facilitator } from '@coinbase/x402'; // For mainnet
-import { getAssetsDir } from './utils/getAssetsDir';
+import { getAssetsDir } from '@project/common';
 
 export function getConfig({
   ffmpegPath,

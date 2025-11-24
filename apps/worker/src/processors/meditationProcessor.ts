@@ -9,22 +9,27 @@ import { createWriteStream } from 'fs';
 import { join } from 'path';
 import { MeditationJobData } from '../queue';
 import { facilitator } from '@coinbase/x402';
-import { getAssetsDir } from '../../backend/src/utils/getAssetsDir';
+import { getAssetsDir } from '@project/common';
 
 /**
  * Process a meditation generation job
  */
 export async function processMeditationJob(
-  job: Job<MeditationJobData>
+  job: Job<MeditationJobData>,
 ): Promise<void> {
   const { episodeId, prompt, voice, ambience, length, userId } = job.data;
   const jobId = job.id!;
 
-  console.log(`[meditationProcessor] Processing job ${jobId} for episode ${episodeId}`);
+  console.log(
+    `[meditationProcessor] Processing job ${jobId} for episode ${episodeId}`,
+  );
 
   try {
     // Get database connection
-    const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/app';
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is required');
+    }
     const client = postgres(connectionString);
     const db = drizzle(client);
 
@@ -35,7 +40,8 @@ export async function processMeditationJob(
       .where(eq(episodes.uuid, episodeId));
 
     // Get configuration
-    const environment = (process.env.NODE_ENV as 'development' | 'production') || 'development';
+    const environment =
+      (process.env.NODE_ENV as 'development' | 'production') || 'development';
     const config: Config = {
       environment,
       receivingWallet: process.env.RECEIVING_WALLET || '',
@@ -71,14 +77,18 @@ export async function processMeditationJob(
         maxLength: 60 * 60,
       },
       openai: {
-        speechInstruction: 'Speak like a meditation coach. Calm, soothing, slow and softly.',
-        textInstruction: (length: number) => `You are a world renowned meditation coach at the start of a session with a client.
+        speechInstruction:
+          'Speak like a meditation coach. Calm, soothing, slow and softly.',
+        textInstruction: (
+          length: number,
+        ) => `You are a world renowned meditation coach at the start of a session with a client.
       You are going to guide them through a meditation that will last about ${length} words.
       You should jump straight into the meditation without any introduction.
       End the meditation with some expression of thanks for taking the time to meditate.
       `,
       },
-      errorMessage: "Sorry, I'm having trouble generating a meditation right now. Please try again later.",
+      errorMessage:
+        "Sorry, I'm having trouble generating a meditation right now. Please try again later.",
       assetsDir: getAssetsDir(),
     };
 
@@ -94,45 +104,134 @@ export async function processMeditationJob(
     const fileStream = createWriteStream(outputPath);
 
     // Build the episode
-    console.log(`[meditationProcessor] Starting episode build for job ${jobId}`);
+    console.log(
+      `[meditationProcessor] Starting episode build for job ${jobId}`,
+    );
+
+    // Track when meditation completes (but don't cleanup yet - wait for file stream)
+    let meditationCompleted = false;
     const episodeResult = await buildEpisode(
       config,
       length,
       async () => {
-        console.log(`[meditationProcessor] Episode build completed for job ${jobId}`);
+        console.log(
+          `[meditationProcessor] Episode build completed for job ${jobId}`,
+        );
+        meditationCompleted = true;
+        // Don't call cleanup here - wait for file stream to finish first
       },
       {
         prompt,
         voice,
         ambience,
-      }
+      },
     );
 
     // Pipe transcoder output directly to file
     if (episodeResult.transcoder) {
-      episodeResult.transcoder.pipe(fileStream);
+      episodeResult.transcoder.pipe(fileStream, { end: true });
     }
 
-    // Wait for the file stream to finish
+    // Wait for both the transcoder to end AND the file stream to finish
+    // The transcoder ending means all audio data has been generated
+    // The file stream finishing means all data has been written to disk
     await new Promise<void>((resolve, reject) => {
-      fileStream.on('finish', async () => {
-        // Get file size after writing is complete
-        const stats = await stat(outputPath);
-        const fileSize = stats.size;
-        console.log(`[meditationProcessor] Audio file written: ${outputPath} (${fileSize} bytes)`);
-        resolve();
-      });
-      fileStream.on('error', (error) => {
-        console.error(`[meditationProcessor] File stream error for job ${jobId}:`, error);
+      let resolved = false;
+      let transcoderEnded = false;
+      let fileStreamFinished = false;
+
+      const checkComplete = async () => {
+        if (resolved) return;
+        // Wait for both transcoder to end and file stream to finish
+        // If cleanup killed the transcoder early, we still wait for file stream
+        if (fileStreamFinished && (transcoderEnded || meditationCompleted)) {
+          resolved = true;
+          // Get file size after writing is complete
+          const stats = await stat(outputPath);
+          const fileSize = stats.size;
+          console.log(
+            `[meditationProcessor] Audio file written: ${outputPath} (${fileSize} bytes)`,
+          );
+          resolve();
+        }
+      };
+
+      const errorHandler = (error: Error) => {
+        if (resolved) return;
+        resolved = true;
+        console.error(
+          `[meditationProcessor] Stream error for job ${jobId}:`,
+          error,
+        );
         reject(error);
+      };
+
+      // Listen for file stream finish
+      fileStream.once('finish', async () => {
+        console.log(
+          `[meditationProcessor] File stream finished for job ${jobId}`,
+        );
+        fileStreamFinished = true;
+        await checkComplete();
       });
+      fileStream.once('error', errorHandler);
+
+      // Listen for transcoder end/close events
+      if (episodeResult.transcoder) {
+        episodeResult.transcoder.once('end', () => {
+          console.log(
+            `[meditationProcessor] Transcoder ended for job ${jobId}`,
+          );
+          transcoderEnded = true;
+          checkComplete();
+        });
+        episodeResult.transcoder.once('close', () => {
+          console.log(
+            `[meditationProcessor] Transcoder closed for job ${jobId}`,
+          );
+          transcoderEnded = true;
+          checkComplete();
+        });
+        episodeResult.transcoder.once('error', (err: Error) => {
+          // Only reject if it's a real error (not just stream closed)
+          const isExpectedDisconnect =
+            err.message === 'Output stream closed' ||
+            err.message.includes('stream closed') ||
+            err.message.includes('EPIPE') ||
+            err.message.includes('ECONNRESET') ||
+            err.message.includes('SIGTERM');
+
+          if (isExpectedDisconnect) {
+            console.log(
+              `[meditationProcessor] Transcoder disconnected (expected) for job ${jobId}`,
+            );
+            transcoderEnded = true;
+            checkComplete();
+          } else if (!resolved) {
+            console.error(
+              `[meditationProcessor] Transcoder error for job ${jobId}:`,
+              err,
+            );
+            errorHandler(err);
+          }
+        });
+      } else {
+        // No transcoder, just wait for file stream
+        transcoderEnded = true;
+      }
 
       // Set a timeout to prevent hanging
-      const timeout = setTimeout(() => {
-        reject(new Error('Audio generation timeout'));
-      }, config.timing.maxLength * 1000 + 60000); // maxLength + 1 minute buffer
+      const timeout = setTimeout(
+        () => {
+          if (!resolved) {
+            resolved = true;
+            reject(new Error('Audio generation timeout'));
+          }
+        },
+        config.timing.maxLength * 1000 + 60000,
+      ); // maxLength + 1 minute buffer
 
-      // Clear timeout when stream finishes
+      // Clear timeout when complete
       fileStream.once('finish', () => clearTimeout(timeout));
       fileStream.once('error', () => clearTimeout(timeout));
     });
@@ -154,7 +253,9 @@ export async function processMeditationJob(
       })
       .where(eq(episodes.uuid, episodeId));
 
-    console.log(`[meditationProcessor] Episode ${episodeId} updated in database`);
+    console.log(
+      `[meditationProcessor] Episode ${episodeId} updated in database`,
+    );
 
     // Cleanup
     if (episodeResult.cleanup) {
@@ -164,20 +265,29 @@ export async function processMeditationJob(
 
     console.log(`[meditationProcessor] Job ${jobId} completed successfully`);
   } catch (error) {
-    console.error(`[meditationProcessor] Error processing job ${jobId}:`, error);
-    
+    console.error(
+      `[meditationProcessor] Error processing job ${jobId}:`,
+      error,
+    );
+
     // Update episode with error status if needed
     try {
-      const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/app';
+      const connectionString = process.env.DATABASE_URL;
+      if (!connectionString) {
+        throw new Error('DATABASE_URL environment variable is required');
+      }
       const client = postgres(connectionString);
       const db = drizzle(client);
-      
+
       // You might want to add an error field to episodes table in the future
       // For now, we'll just log the error
-      
+
       await client.end();
     } catch (dbError) {
-      console.error(`[meditationProcessor] Error updating database after failure:`, dbError);
+      console.error(
+        `[meditationProcessor] Error updating database after failure:`,
+        dbError,
+      );
     }
 
     throw error; // Re-throw to mark job as failed

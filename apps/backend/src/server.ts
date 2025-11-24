@@ -1,5 +1,8 @@
 // Load environment variables from .env file
-import 'dotenv/config';
+import { loadEnvFromRoot } from '@project/common';
+
+// Load .env from project root
+loadEnvFromRoot();
 
 import express from 'express';
 import cors from 'cors';

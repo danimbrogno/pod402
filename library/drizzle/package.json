@@ -6,16 +6,16 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.lib.json",
-    "db:generate": "drizzle-kit generate:pg",
-    "db:migrate": "drizzle-kit up:pg",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "drizzle-orm": "^0.29.0"
+    "drizzle-orm": "^0.44.7"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.20.0",
+    "drizzle-kit": "^0.31.7",
     "dotenv": "^16.4.5",
     "typescript": "^5.4.5"
   }

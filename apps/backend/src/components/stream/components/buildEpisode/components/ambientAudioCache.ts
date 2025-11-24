@@ -1,8 +1,8 @@
 import { existsSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { join } from 'path';
-import { Config } from '../../../../../interface';
-import { getAssetsDir } from '../../../../../utils/getAssetsDir';
+import { Config } from '@project/audio-generation';
+import { getAssetsDir } from '@project/common';
 
 // Resolve assets directory using utility function
 const ASSETS_DIR = getAssetsDir();
