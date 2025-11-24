@@ -1,6 +1,5 @@
 import { RequestHandler } from 'express';
-import { buildEpisode } from './components/buildEpisode/buildEpisode';
-import { Config } from '../../interface';
+import { buildEpisode, Config } from '@project/audio-generation';
 
 export const streamHandler =
   (config: Config, length: number): RequestHandler =>

@@ -1,0 +1,33 @@
+{
+  "name": "worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "worker": "dotenv-flow -p ../../ -- tsx src/worker.ts",
+    "build": "tsc -p tsconfig.app.json",
+    "dev": "dotenv-flow -p ../../ -- tsx --watch src/worker.ts",
+    "test": "vitest run",
+    "test:e2e": "vitest run src/worker.e2e.test.ts",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "@coinbase/x402": "^0.7.3",
+    "@project/audio-generation": "*",
+    "@project/drizzle": "*",
+    "bullmq": "^5.0.0",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.7",
+    "ioredis": "^5.3.2",
+    "postgres": "^3.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "dotenv-flow": "^4.1.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5",
+    "uuid": "^9.0.1",
+    "vite-tsconfig-paths": "^5.1.0",
+    "vitest": "^2.0.5"
+  }
+}

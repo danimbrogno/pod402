@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { useFarcasterSDK } from '~/contexts/FarcasterSDKContext';
 import { useConnect, useConnectors, useAccount } from 'wagmi';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
@@ -12,12 +13,15 @@ export function FarcasterHeader() {
     return (
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link
+            to="/"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-700 to-teal-800 flex items-center justify-center">
               <span className="text-white text-sm font-bold">Z</span>
             </div>
             <h1 className="text-lg font-semibold text-stone-900">Zen Den</h1>
-          </div>
+          </Link>
           <div className="text-sm text-stone-500">Loading...</div>
         </div>
       </div>
@@ -71,12 +75,15 @@ export function FarcasterHeader() {
     return (
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link
+            to="/"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-700 to-teal-800 flex items-center justify-center">
               <span className="text-white text-sm font-bold">Z</span>
             </div>
             <h1 className="text-lg font-semibold text-stone-900">Zen Den</h1>
-          </div>
+          </Link>
           <div className="flex items-center gap-3">
             {isConnected ? (
               <>
@@ -119,12 +126,15 @@ export function FarcasterHeader() {
   return (
     <div className="container mx-auto px-4 py-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <Link
+          to="/"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-700 to-teal-800 flex items-center justify-center">
             <span className="text-white text-sm font-bold">Z</span>
           </div>
           <h1 className="text-lg font-semibold text-stone-900">Zen Den</h1>
-        </div>
+        </Link>
         <div className="flex items-center gap-3">
           {isConnected ? (
             <div className="text-sm text-stone-500">Web Mode</div>

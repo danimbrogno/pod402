@@ -20,6 +20,7 @@ services:
     # (Adding the "ports" property to this file will not forward from a Codespace.)
     environment:
       - HOST=0.0.0.0
+      - REDIS_URL=redis://redis:6379
   db:
     image: postgres:16.3
     restart: always
@@ -31,3 +32,8 @@ services:
       - '5432:5432'
     volumes:
       - data:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - '6379:6379'

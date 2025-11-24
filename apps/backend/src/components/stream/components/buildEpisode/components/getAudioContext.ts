@@ -3,7 +3,7 @@ import { StreamAudioContext } from 'web-audio-engine';
 import {
   StreamAudioContext as StreamAudioContextType,
   Config,
-} from '../../../../../interface';
+} from '@project/audio-generation';
 export function getAudioContext(config: Config) {
   const context = new StreamAudioContext() as StreamAudioContextType;
 

@@ -1,6 +1,6 @@
 import Stream, { PassThrough } from 'stream';
 import { getWavHeader } from './wav';
-import { StreamAudioContext, Config } from '../../../../../interface';
+import { StreamAudioContext, Config } from '@project/audio-generation';
 import ffmpeg from 'fluent-ffmpeg';
 export const transcode = (config: Config, context: StreamAudioContext) => {
   const transformer = new PassThrough();

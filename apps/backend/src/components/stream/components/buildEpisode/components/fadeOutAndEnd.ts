@@ -1,4 +1,4 @@
-import { Config } from '../../../../../interface';
+import { Config } from '@project/audio-generation';
 
 export const fadeOutAndEnd = (
   config: Config,

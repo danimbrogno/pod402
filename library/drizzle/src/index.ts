@@ -1,4 +1,11 @@
-import { pgTable, uuid, text, integer, timestamp } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  timestamp,
+  varchar,
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 /**
@@ -21,7 +28,10 @@ export const episodes = pgTable('episodes', {
   url: text('url').notNull(), // URL to access the audio file
   contentType: text('content_type').notNull(), // MIME type (e.g., 'audio/wav')
   size: integer('size').notNull(), // File size in bytes
-  userId: uuid('user_id').notNull().references(() => users.uuid, { onDelete: 'cascade' }),
+  jobId: varchar('job_id', { length: 191 }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.uuid, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -60,9 +70,13 @@ export interface DatabaseConfig {
  * @param overrides - Optional configuration overrides
  * @returns Database configuration
  */
-export function getDrizzleConfig(overrides: Partial<DatabaseConfig> = {}): DatabaseConfig {
+export function getDrizzleConfig(
+  overrides: Partial<DatabaseConfig> = {},
+): DatabaseConfig {
   const defaultConfig: DatabaseConfig = {
-    connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/app',
+    connectionString:
+      process.env.DATABASE_URL ||
+      'postgresql://user:password@localhost:5432/app',
   };
   return { ...defaultConfig, ...overrides };
 }

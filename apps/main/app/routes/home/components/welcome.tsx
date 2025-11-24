@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useX402 } from '~/utils/useX402';
+
 import { useConfig } from '~/contexts/ConfigContext';
 import { Button } from '~/components/ui/Button';
 import { Input } from '~/components/ui/Input';
@@ -57,27 +57,28 @@ export function Welcome() {
   const [prompt, setPrompt] = useState('Give me a meditation about gratitude');
   const [voice, setVoice] = useState<VoiceOption>('nova');
   const [ambience, setAmbience] = useState('1');
-  const { isReady } = useX402();
+  // Wallet is guaranteed to be ready by X402Provider
   const navigate = useNavigate();
 
   const handleGenerateMeditation = () => {
-    if (!isReady) {
-      return;
-    }
-
-    // Navigate to meditation route with parameters
+    // Navigate to paid meditation route with parameters
     const params = new URLSearchParams({
       prompt: prompt || 'Give me a meditation about gratitude',
       voice: voice,
       ambience: ambience,
     });
 
-    navigate(`/meditation?${params.toString()}`);
+    navigate(`/meditation/paid?${params.toString()}`);
   };
 
   const handlePlayDemo = () => {
-    // Navigate to meditation route with demo flag
-    navigate('/meditation?demo=true');
+    // Navigate to free meditation route
+    const params = new URLSearchParams({
+      prompt: prompt || 'Give me a meditation about gratitude',
+      voice: voice,
+      ambience: ambience,
+    });
+    navigate(`/meditation/free?${params.toString()}`);
   };
 
   return (
@@ -142,11 +143,8 @@ export function Welcome() {
               variant="primary"
               fullWidth
               onClick={handleGenerateMeditation}
-              disabled={!isReady}
             >
-              {!isReady
-                ? 'Connect Wallet First'
-                : '✨ Generate Meditation ($0.01)'}
+              ✨ Generate Meditation ($0.01)
             </Button>
           </div>
         </div>

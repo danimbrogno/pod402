@@ -1,16 +1,19 @@
-import { Config } from './interface';
+import { Config } from '@project/audio-generation';
 import { facilitator } from '@coinbase/x402'; // For mainnet
+import { getAssetsDir } from '@project/common';
 
 export function getConfig({
   ffmpegPath,
   ffprobePath,
   environment,
   receivingWallet,
+  openaiApiKey,
 }: {
   ffmpegPath: string;
   ffprobePath: string;
   receivingWallet: string;
   environment: 'development' | 'production';
+  openaiApiKey: string;
 }): Config {
   return {
     environment,
@@ -47,6 +50,7 @@ export function getConfig({
       maxLength: 60 * 60,
     },
     openai: {
+      apiKey: openaiApiKey,
       speechInstruction:
         'Speak like a meditation coach. Calm, soothing, slow and softly.',
       textInstruction: (
@@ -59,5 +63,6 @@ export function getConfig({
     },
     errorMessage:
       "Sorry, I'm having trouble generating a meditation right now. Please try again later.",
+    assetsDir: getAssetsDir(),
   };
 }

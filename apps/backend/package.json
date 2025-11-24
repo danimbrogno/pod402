@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite-node --watch src/server.ts",
-    "start": "node dist/server.js",
-    "preview": "node dist/server.js"
+    "dev": "dotenv-flow -p ../../ -- vite-node --watch src/server.ts",
+    "start": "dotenv-flow -p ../../ -- node dist/server.js",
+    "preview": "dotenv-flow -p ../../ -- node dist/server.js"
   },
   "dependencies": {
     "@coinbase/cdp-sdk": "^1.38.6",

@@ -12,7 +12,7 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
       if (process.env.NODE_ENV === 'development') {
         try {
           const eruda = await import('eruda');
-          // eruda.default.init();
+          eruda.default.init({});
           console.log('Eruda console debugger initialized');
         } catch (error) {
           console.warn('Failed to initialize Eruda:', error);

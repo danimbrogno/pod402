@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { Config } from '../../../../../../interface';
+import { Config } from '@project/audio-generation';
 import { getMeditationText } from './components/getMeditationText';
 import { getPhraseAudio } from './components/getPhraseAudio';
 

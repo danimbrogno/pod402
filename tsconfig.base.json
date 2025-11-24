@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@project/audio-generation": ["library/audio-generation/src/index.ts"],
       "@project/common": ["library/common/src/index.ts"],
       "@project/contracts": ["library/contracts/src/index.ts"],
       "@project/drizzle": ["library/drizzle/src/index.ts"],

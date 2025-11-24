@@ -2,6 +2,11 @@
  * Generic TypeScript library utilities
  */
 
+import { existsSync } from 'fs';
+import { join, resolve } from 'path';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
 /**
  * Formats a message with a source identifier
  * @param source - The source identifier
@@ -44,7 +49,7 @@ export function delay(ms: number): Promise<void> {
 export async function retry<T>(
   fn: () => Promise<T>,
   retries: number = 3,
-  delayMs: number = 1000
+  delayMs: number = 1000,
 ): Promise<T> {
   try {
     return await fn();
@@ -55,4 +60,57 @@ export async function retry<T>(
     }
     throw error;
   }
+}
+
+/**
+ * Resolves the assets directory path.
+ * Priority:
+ * 1. ASSETS_PATH environment variable (if set)
+ * 2. Relative path from project root (assets/)
+ * 3. Fallback paths for different execution contexts
+ *
+ * @returns The resolved assets directory path
+ */
+export function getAssetsDir(): string {
+  // First, check if ASSETS_PATH environment variable is set
+  if (process.env.ASSETS_PATH) {
+    const envPath = resolve(process.env.ASSETS_PATH);
+    if (existsSync(envPath)) {
+      return envPath;
+    }
+    console.warn(
+      `[getAssetsDir] ASSETS_PATH environment variable set but path does not exist: ${envPath}`,
+    );
+  }
+
+  // Get the directory path for ES modules (from library location)
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+
+  // Try paths relative to library location (library/common/src)
+  // Go up to project root, then to assets at root
+  const possiblePaths = [
+    // From library/common/src -> ../../assets
+    join(__dirname, '../../../assets'),
+    // From library/common (if built) -> ../assets
+    join(__dirname, '../../assets'),
+    // From project root -> assets
+    join(process.cwd(), 'assets'),
+    // Fallback: relative to current working directory
+    join(process.cwd(), 'assets'),
+  ];
+
+  for (const assetsDir of possiblePaths) {
+    const resolvedPath = resolve(assetsDir);
+    if (existsSync(resolvedPath)) {
+      return resolvedPath;
+    }
+  }
+
+  // If none found, return the first attempted path and log a warning
+  const fallbackPath = resolve(possiblePaths[0]);
+  console.warn(
+    `[getAssetsDir] Assets directory not found. Tried multiple paths. Using fallback: ${fallbackPath}`,
+  );
+  return fallbackPath;
 }
