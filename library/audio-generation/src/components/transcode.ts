@@ -1,49 +1,61 @@
-import Stream, { PassThrough } from 'stream';
-import { getWavHeader } from './wav';
+import type { WavHeaderOptions } from './wav';
 import { StreamAudioContext, Config } from '../types';
-import ffmpeg from 'fluent-ffmpeg';
 
-export const transcode = (config: Config, context: StreamAudioContext) => {
-  const transformer = new PassThrough();
+type PassThroughCtor = typeof import('stream').PassThrough;
+type FfmpegFactory = typeof import('fluent-ffmpeg');
+type GetWavHeaderFn = (options: WavHeaderOptions) => Uint8Array;
 
-  const wavHeader = getWavHeader({
-    numFrames: 0, // We set 0 here since we don't know the length of our generated meditations.
-    numChannels: config.channels,
-    sampleRate: config.frequency,
-    bytesPerSample: config.bytesPerSample,
-    format: config.format,
-  });
+export type TranscodeDependencies = {
+  PassThrough: PassThroughCtor;
+  createFfmpegCommand: FfmpegFactory;
+  getWavHeader: GetWavHeaderFn;
+  logger?: Pick<typeof console, 'log' | 'error'>;
+};
 
-  transformer.push(wavHeader);
+export const createTranscode = (deps: TranscodeDependencies) => {
+  const logger = deps.logger ?? console;
 
-  const wav = context.pipe(transformer);
+  return (config: Config, context: StreamAudioContext) => {
+    const transformer = new deps.PassThrough();
 
-  const {
-    ffmpeg: { ffmpegPath, ffprobePath },
-  } = config;
-
-  return ffmpeg(wav)
-    .setFfmpegPath(ffmpegPath)
-    .setFfprobePath(ffprobePath)
-
-    .toFormat('mp3')
-    .on('progress', function (progress) {
-      console.log({ progress }, `Render progress`);
-    })
-    .on('error', (err: Error) => {
-      // "Output stream closed" is expected when client disconnects
-      const isExpectedDisconnect =
-        err.message === 'Output stream closed' ||
-        err.message.includes('stream closed') ||
-        err.message.includes('EPIPE') ||
-        err.message.includes('ECONNRESET');
-
-      if (isExpectedDisconnect) {
-        console.log(
-          '[transcode] Client disconnected, output stream closed (expected)'
-        );
-      } else {
-        console.error('[transcode] Transcoder error:', err);
-      }
+    const wavHeader = deps.getWavHeader({
+      numFrames: 0,
+      numChannels: config.channels,
+      sampleRate: config.frequency,
+      bytesPerSample: config.bytesPerSample,
+      format: config.format,
     });
+
+    transformer.push(wavHeader);
+
+    const wav = context.pipe(transformer);
+
+    const {
+      ffmpeg: { ffmpegPath, ffprobePath },
+    } = config;
+
+    return deps
+      .createFfmpegCommand(wav)
+      .setFfmpegPath(ffmpegPath)
+      .setFfprobePath(ffprobePath)
+      .toFormat('mp3')
+      .on('progress', function (progress) {
+        logger.log({ progress }, `Render progress`);
+      })
+      .on('error', (err: Error) => {
+        const isExpectedDisconnect =
+          err.message === 'Output stream closed' ||
+          err.message.includes('stream closed') ||
+          err.message.includes('EPIPE') ||
+          err.message.includes('ECONNRESET');
+
+        if (isExpectedDisconnect) {
+          logger.log(
+            '[transcode] Client disconnected, output stream closed (expected)'
+          );
+        } else {
+          logger.error('[transcode] Transcoder error:', err);
+        }
+      });
+  };
 };

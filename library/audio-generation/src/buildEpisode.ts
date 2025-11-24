@@ -1,125 +1,173 @@
-import { getAmbientAudio } from './components/getAmbientAudio';
-import { Config } from './types';
-import { getAudioContext } from './components/getAudioContext';
-import { transcode } from './components/transcode';
-import { getNarration } from './components/narration/getNarration';
-import { fadeOutAndEnd } from './components/fadeOutAndEnd';
+import { Config, StreamAudioContext } from './types';
 
-export const buildEpisode = async (
+export type GetAudioContextFn = (
+  config: Config
+) => {
+  context: StreamAudioContext;
+  gain: GainNode;
+  destination: AudioNode;
+};
+
+export type TranscodeFn = (
   config: Config,
-  length: number,
-  onComplete?: () => void,
-  options?: {
+  context: StreamAudioContext
+) => {
+  kill?: (signal?: string) => void;
+  ffmpegProc?: { kill: (signal?: string) => void };
+};
+
+export type GetAmbientAudioFn = (
+  config: Config,
+  context: AudioContext,
+  destination: AudioNode,
+  fileNum: string
+) => Promise<AudioBufferSourceNode>;
+
+export type GetNarrationFn = (
+  config: Config,
+  context: AudioContext,
+  destination: AudioNode,
+  narrationOptions: {
     prompt?: string;
     voice?: string;
-    ambience?: string;
-  }
-) => {
-  console.log('[buildEpisode] Starting episode build');
+    length?: number;
+  },
+  onComplete?: () => Promise<void> | void
+) => Promise<() => void>;
 
-  // Initialize the audio engine
-  const audioEngine = getAudioContext(config);
-  console.log(
-    `[buildEpisode] Audio context created, initial state: ${audioEngine.context.state}`
-  );
-  await audioEngine.context.resume();
-  console.log(
-    `[buildEpisode] Audio context resumed, state: ${audioEngine.context.state}, currentTime: ${audioEngine.context.currentTime}`
-  );
+export type FadeOutAndEndFn = (
+  config: Config,
+  gain: GainNode,
+  context: AudioContext,
+  onPlaybackEnd?: () => void
+) => void;
 
-  // Transcode the audio to mp3
-  const transcoder = transcode(config, audioEngine.context);
-  console.log('[buildEpisode] Transcoder created');
+export type BuildEpisodeDependencies = {
+  getAudioContext: GetAudioContextFn;
+  transcode: TranscodeFn;
+  getAmbientAudio: GetAmbientAudioFn;
+  getNarration: GetNarrationFn;
+  fadeOutAndEnd: FadeOutAndEndFn;
+  randomInt: (max: number) => number;
+  logger?: Pick<typeof console, 'log' | 'warn'>;
+};
 
-  // Use provided ambience or pick a random ambient audio file (001-013)
-  let ambientNum: string;
-  if (options?.ambience) {
-    const ambienceNum = parseInt(options.ambience, 10);
-    // Validate ambience is between 1-13
-    if (isNaN(ambienceNum) || ambienceNum < 1 || ambienceNum > 13) {
-      console.warn(
-        `[buildEpisode] Invalid ambience value: ${options.ambience}, using random instead`
-      );
-      ambientNum = String(Math.floor(Math.random() * 13) + 1).padStart(3, '0');
-    } else {
-      ambientNum = String(ambienceNum).padStart(3, '0');
-    }
-  } else {
-    ambientNum = String(Math.floor(Math.random() * 13) + 1).padStart(3, '0');
-  }
-  console.log(
-    `[buildEpisode] Selected ambient audio: ${ambientNum}${
-      options?.ambience ? ' (from query)' : ' (random)'
-    }`
-  );
+export const createBuildEpisode = (deps: BuildEpisodeDependencies) => {
+  const logger = deps.logger ?? console;
 
-  // Load ambient audio
-  console.log('[buildEpisode] Loading ambient audio...');
-  await getAmbientAudio(
-    config,
-    audioEngine.context,
-    audioEngine.destination,
-    ambientNum
-  );
-  console.log('[buildEpisode] Ambient audio started');
-
-  // Cleanup function for transcoder and audio context
-  const cleanup = () => {
-    console.log('[buildEpisode] Cleanup requested');
-    if (transcoder) {
-      try {
-        if (typeof transcoder.kill === 'function') {
-          transcoder.kill('SIGTERM');
-        } else if (transcoder.ffmpegProc) {
-          transcoder.ffmpegProc.kill('SIGTERM');
-        }
-      } catch (error) {
-        // Ignore errors during cleanup
+  const pickAmbientTrack = (requested?: string): string => {
+    if (requested) {
+      const parsed = Number.parseInt(requested, 10);
+      if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 13) {
+        return String(parsed).padStart(3, '0');
       }
+      logger.warn(
+        `[buildEpisode] Invalid ambience value: ${requested}, using random instead`
+      );
     }
-    if (audioEngine.context.state !== 'closed') {
-      audioEngine.context.close();
-    }
+    return String(deps.randomInt(13) + 1).padStart(3, '0');
   };
 
-  // Handler for when narration completes
-  const onNarrationComplete = async () => {
-    console.log('[buildEpisode] Narration completed, starting fadeout');
+  return async (
+    config: Config,
+    length: number,
+    onComplete?: () => void,
+    options?: {
+      prompt?: string;
+      voice?: string;
+      ambience?: string;
+    }
+  ) => {
+    logger.log('[buildEpisode] Starting episode build');
 
-    const onPlaybackEnd = () => {
-      console.log('[buildEpisode] Meditation completed');
-      cleanup();
-      onComplete?.();
+    const audioEngine = deps.getAudioContext(config);
+    logger.log(
+      `[buildEpisode] Audio context created, initial state: ${audioEngine.context.state}`
+    );
+    await audioEngine.context.resume();
+    logger.log(
+      `[buildEpisode] Audio context resumed, state: ${audioEngine.context.state}, currentTime: ${audioEngine.context.currentTime}`
+    );
+
+    const transcoder = deps.transcode(config, audioEngine.context);
+    logger.log('[buildEpisode] Transcoder created');
+
+    const ambientNum = pickAmbientTrack(options?.ambience);
+    logger.log(
+      `[buildEpisode] Selected ambient audio: ${ambientNum}${
+        options?.ambience ? ' (from query)' : ' (random)'
+      }`
+    );
+
+    logger.log('[buildEpisode] Loading ambient audio...');
+    await deps.getAmbientAudio(
+      config,
+      audioEngine.context,
+      audioEngine.destination,
+      ambientNum
+    );
+    logger.log('[buildEpisode] Ambient audio started');
+
+    const cleanup = () => {
+      logger.log('[buildEpisode] Cleanup requested');
+      if (transcoder) {
+        try {
+          if (typeof transcoder.kill === 'function') {
+            transcoder.kill('SIGTERM');
+          } else if (transcoder.ffmpegProc) {
+            transcoder.ffmpegProc.kill('SIGTERM');
+          }
+        } catch {
+          // swallow cleanup errors
+        }
+      }
+      if (audioEngine.context.state !== 'closed') {
+        audioEngine.context.close();
+      }
     };
 
-    fadeOutAndEnd(config, audioEngine.gain, audioEngine.context, onPlaybackEnd);
-  };
+    const onNarrationComplete = async () => {
+      logger.log('[buildEpisode] Narration completed, starting fadeout');
 
-  // Start narration generation
-  console.log('[buildEpisode] Calling getNarration with:', {
-    prompt: options?.prompt || 'default',
-    voice: options?.voice || 'random',
-    length,
-    hasOnComplete: !!onNarrationComplete,
-  });
-  await getNarration(
-    config,
-    audioEngine.context,
-    audioEngine.destination,
-    {
-      prompt: options?.prompt,
-      voice: options?.voice,
+      const onPlaybackEnd = () => {
+        logger.log('[buildEpisode] Meditation completed');
+        cleanup();
+        onComplete?.();
+      };
+
+      deps.fadeOutAndEnd(
+        config,
+        audioEngine.gain,
+        audioEngine.context,
+        onPlaybackEnd
+      );
+    };
+
+    logger.log('[buildEpisode] Calling getNarration with:', {
+      prompt: options?.prompt || 'default',
+      voice: options?.voice || 'random',
       length,
-    },
-    onNarrationComplete
-  );
-  console.log(
-    '[buildEpisode] getNarration returned (narration started in background)'
-  );
+      hasOnComplete: !!onNarrationComplete,
+    });
+    await deps.getNarration(
+      config,
+      audioEngine.context,
+      audioEngine.destination,
+      {
+        prompt: options?.prompt,
+        voice: options?.voice,
+        length,
+      },
+      onNarrationComplete
+    );
+    logger.log(
+      '[buildEpisode] getNarration returned (narration started in background)'
+    );
 
-  return {
-    transcoder,
-    cleanup,
-    audioContext: audioEngine.context,
+    return {
+      transcoder,
+      cleanup,
+      audioContext: audioEngine.context,
+    };
   };
 };

@@ -1,145 +1,161 @@
 import OpenAI from 'openai';
 import { Config } from '../../../../types';
 
-export async function* getPhraseAudio(
-  config: Config,
+type CreateSpeechFn = (
   openai: OpenAI,
-  context: AudioContext,
-  destination: AudioNode,
-  text: string,
-  voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
-): AsyncGenerator<void, void, unknown> {
-  const {
-    openai: { speechInstruction: instructions },
-    levels,
-  } = config;
+  params: Parameters<OpenAI['audio']['speech']['create']>[0]
+) => Promise<{ arrayBuffer: () => Promise<ArrayBuffer> }>;
 
-  console.log(
-    `[getPhraseAudio] Generating audio for phrase: "${text.substring(0, 50)}${
-      text.length > 50 ? '...' : ''
-    }" with voice: ${voice}`,
-  );
+export type GetPhraseAudioDependencies = {
+  createSpeech: CreateSpeechFn;
+  setTimeoutFn?: typeof setTimeout;
+  clearTimeoutFn?: typeof clearTimeout;
+  logger?: Pick<typeof console, 'log' | 'warn' | 'error'>;
+};
 
-  const wav = await openai.audio.speech.create({
-    model: 'gpt-4o-mini-tts',
-    voice,
-    input: text,
-    instructions,
-    stream_format: 'audio',
-    response_format: 'wav',
-    speed: 1,
-  });
+export const createGetPhraseAudio = (deps: GetPhraseAudioDependencies) => {
+  const logger = deps.logger ?? console;
+  const setTimeoutImpl = deps.setTimeoutFn ?? setTimeout;
+  const clearTimeoutImpl = deps.clearTimeoutFn ?? clearTimeout;
 
-  const fileBuffer = await wav.arrayBuffer();
-  console.log(
-    `[getPhraseAudio] Received audio buffer: ${fileBuffer.byteLength} bytes`,
-  );
+  return async function* getPhraseAudio(
+    config: Config,
+    openai: OpenAI,
+    context: AudioContext,
+    destination: AudioNode,
+    text: string,
+    voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+  ): AsyncGenerator<void, void, unknown> {
+    const {
+      openai: { speechInstruction: instructions },
+      levels,
+    } = config;
 
-  // Decode the audio data into an AudioBuffer
-  // This will hold the decoded wav audio data in memory
-  console.log(
-    `[getPhraseAudio] Decoding audio data, context state: ${context.state}`,
-  );
-  let audioBuffer: AudioBuffer;
-  try {
-    audioBuffer = await context.decodeAudioData(fileBuffer);
-    console.log(
-      `[getPhraseAudio] Audio decoded successfully: ${audioBuffer.duration}s, ${audioBuffer.sampleRate}Hz, ${audioBuffer.numberOfChannels} channels`,
+    logger.log(
+      `[getPhraseAudio] Generating audio for phrase: "${text.substring(0, 50)}${
+        text.length > 50 ? '...' : ''
+      }" with voice: ${voice}`
     );
-  } catch (error) {
-    console.error(`[getPhraseAudio] Failed to decode audio:`, error);
-    throw error;
-  }
 
-  const source = context.createBufferSource();
-  source.buffer = audioBuffer;
-  source.loop = false;
+    const wav = await deps.createSpeech(openai, {
+      model: 'gpt-4o-mini-tts',
+      voice,
+      input: text,
+      instructions,
+      stream_format: 'audio',
+      response_format: 'wav',
+      speed: 1,
+    });
 
-  const gain = context.createGain();
-  gain.gain.value = levels.narration;
-  console.log(
-    `[getPhraseAudio] Setting narration gain to: ${levels.narration}`,
-  );
+    const fileBuffer = await wav.arrayBuffer();
+    logger.log(
+      `[getPhraseAudio] Received audio buffer: ${fileBuffer.byteLength} bytes`
+    );
 
-  source.connect(gain);
-  gain.connect(destination);
-  console.log(
-    `[getPhraseAudio] Audio nodes connected: source -> gain -> destination`,
-  );
+    logger.log(
+      `[getPhraseAudio] Decoding audio data, context state: ${context.state}`
+    );
 
-  // Yield when the audio finishes playing
-  const currentTime = context.currentTime;
-  const startTime = currentTime;
-  const endTime = startTime + audioBuffer.duration;
-  console.log(
-    `[getPhraseAudio] Audio context state: ${context.state}, currentTime: ${currentTime}`,
-  );
-  console.log(
-    `[getPhraseAudio] Scheduling audio to start at ${startTime}, will end at ${endTime} (duration: ${audioBuffer.duration}s)`,
-  );
+    let audioBuffer: AudioBuffer;
+    try {
+      audioBuffer = await context.decodeAudioData(fileBuffer);
+      logger.log(
+        `[getPhraseAudio] Audio decoded successfully: ${audioBuffer.duration}s, ${audioBuffer.sampleRate}Hz, ${audioBuffer.numberOfChannels} channels`
+      );
+    } catch (error) {
+      logger.error(`[getPhraseAudio] Failed to decode audio:`, error);
+      throw error;
+    }
 
-  try {
-    source.start(startTime);
-    source.onended = () => {
-      console.log(`[getPhraseAudio] source.onended fired`);
-    };
-    console.log(`[getPhraseAudio] source.start() called successfully`);
-  } catch (error) {
-    console.error(`[getPhraseAudio] Error calling source.start():`, error);
-    throw error;
-  }
+    const source = context.createBufferSource();
+    source.buffer = audioBuffer;
+    source.loop = false;
 
-  // Wait for the audio to finish, then yield
-  console.log(
-    `[getPhraseAudio] Setting up onended handler, expected duration: ${audioBuffer.duration}s`,
-  );
-  await new Promise<void>((resolve, reject) => {
-    let resolved = false;
-    const timeout = setTimeout(
-      () => {
+    const gain = context.createGain();
+    gain.gain.value = levels.narration;
+    logger.log(
+      `[getPhraseAudio] Setting narration gain to: ${levels.narration}`
+    );
+
+    source.connect(gain);
+    gain.connect(destination);
+    logger.log(
+      `[getPhraseAudio] Audio nodes connected: source -> gain -> destination`
+    );
+
+    const startTime = context.currentTime;
+    const endTime = startTime + audioBuffer.duration;
+    logger.log(
+      `[getPhraseAudio] Audio context state: ${context.state}, currentTime: ${context.currentTime}`
+    );
+    logger.log(
+      `[getPhraseAudio] Scheduling audio to start at ${startTime}, will end at ${endTime} (duration: ${audioBuffer.duration}s)`
+    );
+
+    try {
+      source.start(startTime);
+      source.onended = () => {
+        logger.log(`[getPhraseAudio] source.onended fired`);
+      };
+      logger.log(`[getPhraseAudio] source.start() called successfully`);
+    } catch (error) {
+      logger.error(`[getPhraseAudio] Error calling source.start():`, error);
+      throw error;
+    }
+
+    logger.log(
+      `[getPhraseAudio] Setting up onended handler, expected duration: ${audioBuffer.duration}s`
+    );
+    await new Promise<void>((resolve, reject) => {
+      let resolved = false;
+      const timeout = setTimeoutImpl(
+        () => {
+          if (!resolved) {
+            resolved = true;
+            logger.error(
+              `[getPhraseAudio] TIMEOUT: Audio did not complete within ${
+                audioBuffer.duration + 5
+              }s. Audio may not be playing.`
+            );
+            logger.error(
+              `[getPhraseAudio] Context state: ${context.state}, currentTime: ${context.currentTime}`
+            );
+            reject(
+              new Error(
+                `Audio playback timeout after ${audioBuffer.duration + 5}s`
+              )
+            );
+          }
+        },
+        (audioBuffer.duration + 5) * 1000
+      );
+
+      source.onended = () => {
         if (!resolved) {
           resolved = true;
-          console.error(
-            `[getPhraseAudio] TIMEOUT: Audio did not complete within ${audioBuffer.duration + 5}s. Audio may not be playing.`,
+          clearTimeoutImpl(timeout);
+          logger.log(
+            `[getPhraseAudio] Audio playback completed for phrase: "${text.substring(
+              0,
+              50
+            )}${text.length > 50 ? '...' : ''}"`
           );
-          console.error(
-            `[getPhraseAudio] Context state: ${context.state}, currentTime: ${context.currentTime}`,
+          logger.log(
+            `[getPhraseAudio] onended fired at context.currentTime: ${context.currentTime}`
           );
-          reject(
-            new Error(
-              `Audio playback timeout after ${audioBuffer.duration + 5}s`,
-            ),
+          resolve();
+        } else {
+          logger.warn(
+            `[getPhraseAudio] onended fired but promise already resolved/rejected`
           );
         }
-      },
-      (audioBuffer.duration + 5) * 1000,
-    ); // 5 second buffer
+      };
 
-    source.onended = () => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timeout);
-        console.log(
-          `[getPhraseAudio] Audio playback completed for phrase: "${text.substring(
-            0,
-            50,
-          )}${text.length > 50 ? '...' : ''}"`,
-        );
-        console.log(
-          `[getPhraseAudio] onended fired at context.currentTime: ${context.currentTime}`,
-        );
-        resolve();
-      } else {
-        console.warn(
-          `[getPhraseAudio] onended fired but promise already resolved/rejected`,
-        );
-      }
-    };
+      logger.log(
+        `[getPhraseAudio] onended handler registered, waiting for audio to complete...`
+      );
+    });
 
-    console.log(
-      `[getPhraseAudio] onended handler registered, waiting for audio to complete...`,
-    );
-  });
-
-  yield;
-}
+    yield;
+  };
+};
